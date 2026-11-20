@@ -23,10 +23,11 @@ def build(base_dir=None):
     if not ok:
         raise SystemExit(1)
     img = layout.build_image(data)
-    out = os.path.join(base, "entry.png")
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or base
+    out = os.path.join(out_dir, "entry.png")
     img.save(out, optimize=True)
     small = img.resize((480, 480), Image.BICUBIC)
-    small.save(os.path.join(base, "entry-480.png"), optimize=True)
+    small.save(os.path.join(out_dir, "entry-480.png"), optimize=True)
     print("wrote", out, os.path.getsize(out), "bytes")
     return out
 
