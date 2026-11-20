@@ -1,0 +1,863 @@
+{
+  "nameplate": "THE WORLD IN ONE DAY",
+  "date_line": "Friday 20 November 2026",
+  "printed_total": 46,
+  "timeline": [
+    {
+      "label": "OVERNIGHT",
+      "text": "Senegal search",
+      "story_num": 42,
+      "sourced_time": false
+    },
+    {
+      "label": "MORNING",
+      "text": "EU–UK summit",
+      "story_num": 32,
+      "sourced_time": false
+    },
+    {
+      "label": "MIDDAY",
+      "text": "Akvan ~noon",
+      "story_num": 2,
+      "sourced_time": true,
+      "time_text": "noon"
+    },
+    {
+      "label": "AFTERNOON",
+      "text": "COP31 closing",
+      "story_num": 4,
+      "sourced_time": false
+    },
+    {
+      "label": "EVENING",
+      "text": "Dow close",
+      "story_num": 5,
+      "sourced_time": false
+    },
+    {
+      "label": "LATE",
+      "text": "SCO forum",
+      "story_num": 43,
+      "sourced_time": false
+    }
+  ],
+  "stories": [
+    {
+      "id": "B1",
+      "tier": "hero",
+      "region": "Asia",
+      "place": "SHENZHEN",
+      "headline": "Trump, Xi, Putin meet in Shenzhen",
+      "dek": "Trump, Xi, Putin meet 1h20m; 4-point declaration. — 19 NOV",
+      "scene": "summit",
+      "scene_spec": {
+        "flags": [
+          [
+            "CHINA",
+            [
+              178,
+              34,
+              34
+            ]
+          ],
+          [
+            "RUSSIA",
+            [
+              52,
+              84,
+              160
+            ]
+          ],
+          [
+            "USA",
+            [
+              60,
+              59,
+              110
+            ]
+          ]
+        ]
+      },
+      "sources": [
+        "Reuters",
+        "Haaretz"
+      ],
+      "source_section": "B",
+      "date_treatment": "19 NOV kicker; reported into 20 Nov",
+      "num": 1,
+      "kicker_date": "19 NOV"
+    },
+    {
+      "id": "A1",
+      "tier": "hero",
+      "region": "Asia",
+      "place": "GOPALPUR",
+      "headline": "Akvan slams into Odisha",
+      "dek": "Crosses coast ~noon; ~298,676 evacuated by Thu. — 20 NOV",
+      "scene": "cyclone",
+      "scene_spec": {
+        "label": "AKVAN"
+      },
+      "sources": [
+        "The Hindu"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; noon landfall wire-sourced",
+      "num": 2,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "B3",
+      "tier": "hero",
+      "region": "Middle East",
+      "place": "RIYADH",
+      "headline": "Missile scars Riyadh tower",
+      "dek": "80 storeys, 385 m; several floors damaged, no casualties. — 19 NOV",
+      "scene": "tower_strike",
+      "scene_spec": {
+        "label": "PIF TOWER"
+      },
+      "sources": [
+        "Reuters",
+        "Al Jazeera"
+      ],
+      "source_section": "B",
+      "date_treatment": "19 NOV kicker",
+      "num": 3,
+      "kicker_date": "19 NOV"
+    },
+    {
+      "id": "A2",
+      "tier": "hero",
+      "region": "Asia",
+      "place": "ANTALYA",
+      "headline": "COP31 closing day, no deal",
+      "dek": "Final day in Antalya; draft cut 144→80 paras, $120bn goal gone. — 20 NOV",
+      "scene": "conference",
+      "scene_spec": {},
+      "sources": [
+        "Reuters"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; draft cut dated 19 Nov in dek",
+      "num": 4,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A5",
+      "tier": "card",
+      "region": "North America",
+      "place": "NEW YORK",
+      "headline": "Wall Street slides as Dow falls",
+      "dek": "−1,101 (−2.19%) · 19 NOV",
+      "scene": "chart_down",
+      "scene_spec": {
+        "label": "DOW"
+      },
+      "sources": [
+        "Reuters",
+        "Barron's"
+      ],
+      "source_section": "A",
+      "date_treatment": "19 Nov US close, reported 20 Nov",
+      "num": 5,
+      "kicker_date": "19 NOV CLOSE"
+    },
+    {
+      "id": "B5",
+      "tier": "card",
+      "region": "North America",
+      "place": "NEW YORK",
+      "headline": "Anthropic debut jumps 17%",
+      "dek": "+17% · ~$1.3tn · 19 NOV",
+      "scene": "chart_up",
+      "scene_spec": {
+        "label": "ANT"
+      },
+      "sources": [
+        "WSJ"
+      ],
+      "source_section": "B",
+      "date_treatment": "19 NOV kicker; valuation on close basis",
+      "num": 6,
+      "kicker_date": "19 NOV"
+    },
+    {
+      "id": "B6",
+      "tier": "card",
+      "region": "Global",
+      "place": "LEONIDA",
+      "headline": "GTA VI launches to record estimates",
+      "dek": "~$1.84bn EST. · 19 NOV",
+      "scene": "gta_skyline",
+      "scene_spec": {
+        "label": "GTA VI"
+      },
+      "sources": [
+        "Sensor Tower"
+      ],
+      "source_section": "B",
+      "date_treatment": "19 NOV kicker; Sensor Tower ESTIMATE",
+      "num": 7,
+      "kicker_date": "19 NOV"
+    },
+    {
+      "id": "A3",
+      "tier": "card",
+      "region": "Oceania",
+      "place": "WELLINGTON",
+      "headline": "Nicholls 146* lifts NZ",
+      "dek": "317/6 · DAY 2, 20 NOV",
+      "scene": "cricket",
+      "scene_spec": {
+        "label": "WELLINGTON"
+      },
+      "sources": [
+        "Cricinfo"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov, day 2",
+      "num": 8,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A27",
+      "tier": "card",
+      "region": "North America",
+      "place": "WASHINGTON",
+      "headline": "Senate rejects Iran war-powers curb",
+      "dek": "51–48 · REPORTED 20 NOV",
+      "scene": "ballot",
+      "scene_spec": {},
+      "sources": [
+        "Times Now",
+        "Haaretz"
+      ],
+      "source_section": "A",
+      "date_treatment": "Thu vote, reported 20 Nov",
+      "num": 9,
+      "kicker_date": "REPORTED 20 NOV"
+    },
+    {
+      "id": "A12",
+      "tier": "card",
+      "region": "Europe",
+      "place": "ZURICH",
+      "headline": "Two to challenge Infantino for FIFA",
+      "dek": "2 rivals · Infantino · 20 NOV",
+      "scene": "football",
+      "scene_spec": {
+        "label": "FIFA"
+      },
+      "sources": [
+        "NST"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 10,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A14",
+      "tier": "card",
+      "region": "North America",
+      "place": "CINCINNATI",
+      "headline": "Fiona the hippo dies",
+      "dek": "Hat swallowed · 20 NOV",
+      "scene": "hippo",
+      "scene_spec": {
+        "label": "FIONA"
+      },
+      "sources": [
+        "NST",
+        "AFP"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 11,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A22",
+      "tier": "card",
+      "region": "Oceania",
+      "place": "SUVA",
+      "headline": "El Niño drought grips Fiji, Tonga",
+      "dek": "Crisis deepens · 20 NOV",
+      "scene": "drought",
+      "scene_spec": {
+        "label": "FIJI"
+      },
+      "sources": [
+        "Manila Times"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; disaster declared 18 Nov, deepening",
+      "num": 12,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A20",
+      "tier": "card",
+      "region": "Asia",
+      "place": "JAKARTA",
+      "headline": "Indonesia approves asset-seizure law",
+      "dek": "1st seizure law · 20 NOV",
+      "scene": "scales",
+      "scene_spec": {},
+      "sources": [
+        "Manila Times"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 13,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A15",
+      "tier": "card",
+      "region": "Europe",
+      "place": "LONDON",
+      "headline": "BAE to cut jobs in air sector",
+      "dek": "1,070 jobs cut · 20 NOV",
+      "scene": "factory",
+      "scene_spec": {
+        "label": "BAE"
+      },
+      "sources": [
+        "NST"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 14,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A29",
+      "tier": "card",
+      "region": "Middle East",
+      "place": "TAIZ",
+      "headline": "Yemeni forces strike Houthi sites",
+      "dek": "Strikes south of Taiz · 20 NOV",
+      "scene": "missiles",
+      "scene_spec": {},
+      "sources": [
+        "Times Now"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 15,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A55",
+      "tier": "card",
+      "region": "Africa",
+      "place": "SOUTH AFRICA",
+      "headline": "South Africa win Test; Bavuma out",
+      "dek": "Test win · 20 NOV",
+      "scene": "stumps",
+      "scene_spec": {
+        "label": "TEST"
+      },
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; verified via NDTV 20-Nov list",
+      "num": 16,
+      "kicker_date": "20 NOV"
+    },
+    {
+      "id": "A4",
+      "tier": "index",
+      "region": "North America",
+      "place": "WASHINGTON",
+      "brief": "Trump pushes Iran strike decision into 2027.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Haaretz",
+        "Reuters"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 17
+    },
+    {
+      "id": "A6",
+      "tier": "index",
+      "region": "Global",
+      "place": "UNITED NATIONS",
+      "brief": "World Children's Day marked around the world.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "UN"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 18
+    },
+    {
+      "id": "A8",
+      "tier": "index",
+      "region": "Asia",
+      "place": "DELHI",
+      "brief": "Modi opens FICCI centenary convention in Delhi.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 19
+    },
+    {
+      "id": "A9",
+      "tier": "index",
+      "region": "Asia",
+      "place": "BHOPAL",
+      "brief": "India edge New Zealand 3–2 in hockey opener.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 20
+    },
+    {
+      "id": "A10",
+      "tier": "index",
+      "region": "Asia",
+      "place": "HONG KONG",
+      "brief": "Satwik and Chirag reach Hong Kong Open QF.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 21
+    },
+    {
+      "id": "A11",
+      "tier": "index",
+      "region": "North America",
+      "place": "FLORIDA",
+      "brief": "South Florida storms flood roads, collapse roof.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 22
+    },
+    {
+      "id": "A13",
+      "tier": "index",
+      "region": "North America",
+      "place": "MIAMI",
+      "brief": "Messi tops MLS pay at $28.3m guaranteed.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NST"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 23
+    },
+    {
+      "id": "A16",
+      "tier": "index",
+      "region": "North America",
+      "place": "MENLO PARK",
+      "brief": "Meta rethinks 2030 net-zero amid AI buildout.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Manila Times"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 24
+    },
+    {
+      "id": "A17",
+      "tier": "index",
+      "region": "Europe",
+      "place": "MADRID",
+      "brief": "Sánchez admits 'mistakes' in TV debate.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NST"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 25
+    },
+    {
+      "id": "A18",
+      "tier": "index",
+      "region": "Europe",
+      "place": "MANCHESTER",
+      "brief": "Pochettino starts Manchester United rescue.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NST",
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 26
+    },
+    {
+      "id": "A19",
+      "tier": "index",
+      "region": "Europe",
+      "place": "MUNICH",
+      "brief": "Kompany back at Bayern after health scare.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 27
+    },
+    {
+      "id": "A21",
+      "tier": "index",
+      "region": "Europe",
+      "place": "LONDON",
+      "brief": "Harry: would rejoin army to fight Russia.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Manila Times"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 28
+    },
+    {
+      "id": "A23",
+      "tier": "index",
+      "region": "Global",
+      "place": "GENEVA",
+      "brief": "Homo erectus was more adaptable, study finds.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Manila Times"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 29
+    },
+    {
+      "id": "A24",
+      "tier": "index",
+      "region": "North America",
+      "place": "FLORIDA",
+      "brief": "Florida sets record 20th execution; Texas too.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Manila Times",
+        "AP"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 30
+    },
+    {
+      "id": "A25",
+      "tier": "index",
+      "region": "North America",
+      "place": "WASHINGTON",
+      "brief": "Kushner: Russia open to NATO-style guarantees.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Manila Times",
+        "AP"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 31
+    },
+    {
+      "id": "A26",
+      "tier": "index",
+      "region": "Europe",
+      "place": "BRUSSELS",
+      "brief": "EU–UK summit opens in Brussels.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Consilium"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 32
+    },
+    {
+      "id": "A28",
+      "tier": "index",
+      "region": "Middle East",
+      "place": "BAGHDAD",
+      "brief": "Iraq strikes deal with Kataib Hezbollah.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Times Now"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 33
+    },
+    {
+      "id": "A30",
+      "tier": "index",
+      "region": "Middle East",
+      "place": "GAZA",
+      "brief": "Israeli shelling kills one in Gaza's Zeitoun.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Times Now",
+        "Al Jazeera"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 34
+    },
+    {
+      "id": "A32",
+      "tier": "index",
+      "region": "North America",
+      "place": "WASHINGTON",
+      "brief": "Nvidia link in chip-smuggling report.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 35
+    },
+    {
+      "id": "A33",
+      "tier": "index",
+      "region": "North America",
+      "place": "WASHINGTON",
+      "brief": "Trump: US 'spies on China' better.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 36
+    },
+    {
+      "id": "A34",
+      "tier": "index",
+      "region": "North America",
+      "place": "WASHINGTON",
+      "brief": "Trump 'frustrated' with Vance on Iran.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 37
+    },
+    {
+      "id": "A39",
+      "tier": "index",
+      "region": "Europe",
+      "place": "BERLIN",
+      "brief": "Merz hosts Qatar's emir in Berlin.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Gulf Times"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 38
+    },
+    {
+      "id": "A40",
+      "tier": "index",
+      "region": "Europe",
+      "place": "BERLIN",
+      "brief": "NATO assembly opens 72nd session in Berlin.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "NATO PA"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 39
+    },
+    {
+      "id": "A41",
+      "tier": "index",
+      "region": "Asia",
+      "place": "HANOI",
+      "brief": "Aliyev's Vietnam visit continues into day two.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "VietnamPlus"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 40
+    },
+    {
+      "id": "A48",
+      "tier": "index",
+      "region": "Asia",
+      "place": "IPOH",
+      "brief": "Harimau Shakti drill under way in Ipoh.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "PIB"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 41
+    },
+    {
+      "id": "A54",
+      "tier": "index",
+      "region": "Africa",
+      "place": "DAKAR",
+      "brief": "Search goes on after Senegal boat capsizes.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Reuters"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 42
+    },
+    {
+      "id": "A58",
+      "tier": "index",
+      "region": "Asia",
+      "place": "DELHI",
+      "brief": "Pakistan minister leads SCO delegation to Delhi.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Geo News"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 43
+    },
+    {
+      "id": "A60",
+      "tier": "index",
+      "region": "Asia",
+      "place": "ANTALYA",
+      "brief": "COP31 'missing cat' protest over ambition.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "AsiaToday"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 44
+    },
+    {
+      "id": "A56",
+      "tier": "index",
+      "region": "North America",
+      "place": "NEW YORK",
+      "brief": "Anthropic debut fails to lift AI stocks.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "WSJ",
+        "Barron's"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 45
+    },
+    {
+      "id": "A52",
+      "tier": "index",
+      "region": "Asia",
+      "place": "BHOPAL",
+      "brief": "India dedicates first home-grown bird-flu vaccine.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "PIB",
+        "NDTV"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov",
+      "num": 46
+    }
+  ],
+  "verification_notes": {
+    "dropped_after_search": [
+      "A35 EU methane delay: agreed 19 Nov (Council/Europarl), not 20 Nov",
+      "A37 Bayern beat Koln 3-0: match scheduled 20 Nov evening, unplayed at build",
+      "A38 Argentina 0-2 Australia U17: played 19 Nov",
+      "A42 jobless claims 203,000: released 19 Nov",
+      "A46 women's hockey: began 19 Nov, India beat Malaysia 4-1 on 19 Nov",
+      "A47 ICMR 100 transfers: announced 17-18 Nov",
+      "A49 electronics exports +44%: released 17 Nov",
+      "A51 crude -3%: WTI fell 18 Nov",
+      "A57 Australia settler sanctions: announced 18 Nov",
+      "A59 Takaichi China ties: press conference 19 Nov",
+      "A7 Modi meets Prince and Princess of Wales: met 18 Nov (PIB)",
+      "A31 Iran 2,500 missiles: WSJ report 14 Nov, low confidence",
+      "A53 Amur falcons: tracked over Arabian Sea 19 Nov",
+      "A62 Serbia speaker: Cupic elected 19 Nov (140 votes), not 'no result'"
+    ],
+    "kept_with_correction": [
+      "A39 Merz hosts Qatar emir: emir arrived 19 Nov, talks Fri 20 Nov",
+      "A41 Aliyev Vietnam: visit 19-21 Nov, in progress on 20 Nov",
+      "A48 Harimau Shakti: commenced 19 Nov, runs to 30 Nov",
+      "A54 Senegal boat: capsized Wed 18 Nov ~02:00, search ongoing Thu/Fri",
+      "A58 Pakistan SCO: minister Musadik Malik leads delegation (not PM), forum opens 20 Nov",
+      "A52 bird-flu vaccine: dedication event on 20 Nov in Bhopal",
+      "A26 EU-UK summit: verified, Brussels 20 Nov, Burnham/Costa/von der Leyen",
+      "A55 SA cricket: NDTV 20-Nov list"
+    ],
+    "figures_single_basis": [
+      "Akvan ~298,676 evacuated (Thu evening), NOT 105,304 sheltered",
+      "Dow -1,101 close 19 Nov, NOT -1,084 intraday",
+      "Anthropic ~$1.3tn close basis (not $1.5tn fully diluted)",
+      "GTA VI ~$1.84bn Sensor Tower ESTIMATE, not official"
+    ]
+  }
+}
