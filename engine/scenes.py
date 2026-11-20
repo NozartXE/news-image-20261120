@@ -1,1693 +1,887 @@
-"""Parametric scene painters for the front page.
+"""Scene painters: one small flat-colour illustration per story.
 
-Each painter receives (draw, x, y, w, h, spec) and fills its box with
-bold flat shapes - one actor, one setting, one action - drawn to stay
-recognisable when the whole page is shrunk to letterbox scale. Any
-scatter (stars, spray) comes from a fixed-seed LCG local to the call,
-so renders are byte-identical run after run.
+Every painter receives the page image, a draw handle, its box
+``(x, y, w, h)`` (the box corners are ``(x, y)`` and ``(x + w, y + h)``
+in PIL rectangle terms), the story dict and its 1-based number.  Each
+painter fills its own background, draws the scene, and the shared
+frame / number badge / label chip furniture is applied by
+``paint_scene`` so no painter can spill outside its box.
 """
 
 import math
 
-from PIL import ImageFont
+from . import palette
+from .textkit import font, ink_box
 
-from .textutil import SANS_BOLD, width_of
+CHIP_SIDE = {
+    "cyclone": "right",
+    "rescue": "right",
+    "nato": "right",
+    "cricket": "left",
+    "chip": "left",
+    "football": "left",
+    "hippo": "right",
+    "factory": "left",
+}
 
-INK = (26, 24, 22)
-PAPER = (247, 243, 234)
-
-
-class Lcg:
-    """Tiny linear congruential generator with a fixed seed."""
-
-    def __init__(self, seed):
-        self.state = seed & 0x7FFFFFFF
-
-    def next(self):
-        self.state = (self.state * 1103515245 + 12345) & 0x7FFFFFFF
-        return self.state
-
-    def below(self, n):
-        return self.next() % n
-
-
-def label_chip(draw, x, y, w, h, text, size=11, align="tl",
-               bg=(20, 20, 24), fg=(245, 242, 235)):
-    """A small dark caption chip, always clamped fully inside the box."""
-    fnt = ImageFont.truetype(SANS_BOLD, size)
-    tw = width_of(text, fnt)
-    cw = tw + 10
-    ch = size + 7
-    if align == "tr":
-        cx = x + w - cw - 4
-    elif align == "br":
-        cx = x + w - cw - 4
-    else:
-        cx = x + 4
-    cy = y + h - ch - 4 if align in ("br", "bl") else y + 4
-    cx = max(x + 2, min(cx, x + w - cw - 2))
-    cy = max(y + 2, min(cy, y + h - ch - 2))
-    draw.rectangle([cx, cy, cx + cw, cy + ch], fill=bg)
-    draw.text((cx + 5, cy + 3), text, font=fnt, fill=fg)
+SEA = (44, 92, 128)
+SEA_PALE = (170, 196, 214)
+CLOUD = (226, 232, 236)
+COAST = (62, 104, 70)
+SURF = (200, 225, 235)
 
 
-def person(draw, cx, top, scale, skin, hair, suit, tie=(150, 30, 30)):
-    """A simple seated/standing figure: head with hair cap, torso, tie."""
-    r = max(4, int(7 * scale))
-    draw.ellipse([cx - r, top, cx + r, top + 2 * r], fill=skin)
-    draw.pieslice([cx - r, top - 1, cx + r, top + 2 * r], 180, 360, fill=hair)
-    tw = int(13 * scale)
-    th = int(16 * scale)
-    draw.rectangle([cx - tw, top + 2 * r - 1, cx + tw, top + 2 * r + th], fill=suit)
-    shirt_w = max(2, int(3 * scale))
-    draw.rectangle([cx - shirt_w, top + 2 * r - 1, cx + shirt_w,
-                    top + 2 * r + th], fill=(240, 238, 230))
-    draw.polygon([(cx - 2, top + 2 * r + 1), (cx + 2, top + 2 * r + 1),
-                  (cx, top + 2 * r + int(7 * scale))], fill=tie)
-    return top + 2 * r + th
+def _rect(draw, box, fill=None, outline=None, width=1):
+    draw.rectangle(box, fill=fill, outline=outline, width=width)
 
 
-def star_burst(draw, cx, cy, radius, fill, seed=7):
-    """A jagged irregular burst: alternating long/short spikes, never a
-    round disc (a disc reads as a second sun)."""
-    rng = Lcg(seed)
-    pts = []
-    spikes = 11
-    for i in range(spikes * 2):
-        ang = math.pi * i / spikes
-        rad = radius if i % 2 == 0 else radius * (0.38 + 0.2 * (rng.below(10) / 10.0))
-        pts.append((cx + rad * math.cos(ang), cy + rad * math.sin(ang)))
-    draw.polygon(pts, fill=fill)
+def paint_cyclone(img, draw, box, story, num):
+    """Cyclone Akvan: concentric elliptical spiral arms over a coast."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=SEA)
+    cx = x + 301
+    cy = y + 69
+    # twelve spiral arms, 20 px apart, each a 210-degree arc whose
+    # start rotates 65 degrees per arm; colours alternate cloud/pale
+    for k in range(12):
+        rx = 235 - 20 * k
+        ry = min(max(int(rx * 0.26), 4), 60)
+        start = (65 * k) % 360
+        draw.arc([cx - rx, cy - ry, cx + rx, cy + ry], start,
+                 start + 210, fill=CLOUD if k % 2 == 0 else SEA_PALE,
+                 width=6)
+    # dark eye inside a thin cloud ring
+    draw.ellipse([cx - 8, cy - 6, cx + 8, cy + 6], fill=(30, 60, 92))
+    draw.ellipse([cx - 9, cy - 7, cx + 9, cy + 7],
+                 outline=CLOUD, width=2)
+    # three rain streaks upper right, slanting down towards the eye
+    for i in range(3):
+        sx = x + 471 + 46 * i
+        draw.line([sx, y + 6, sx + 20, y + 40], fill=(190, 210, 226),
+                  width=2)
+    # coastline: the green land band follows a stepped shore profile
+    # (each vertex starts a plateau of that height), with a pale surf
+    # line one pixel above the land in every column
+    shore = [(1, 115), (14, 116), (27, 117), (41, 118), (54, 119),
+             (68, 120), (81, 121), (82, 120), (94, 119), (105, 118),
+             (117, 117), (129, 116), (141, 115), (152, 114),
+             (164, 113), (184, 112), (205, 111), (225, 110),
+             (255, 111), (266, 112), (276, 113), (286, 114),
+             (296, 115), (307, 116), (317, 117), (327, 118),
+             (368, 119), (409, 120), (410, 119), (420, 118),
+             (430, 117), (441, 116), (451, 115), (461, 114),
+             (471, 113), (482, 112), (583, 113), (594, 114),
+             (604, 115), (614, 116), (624, 117), (635, 118),
+             (645, 119), (654, 119)]
+    tops = {}
+    for i, (vx, vy) in enumerate(shore):
+        nxt = shore[i + 1][0] if i + 1 < len(shore) else w
+        for lx in range(vx, nxt):
+            tops[lx] = vy
+    pts = [(x, y + h), (x, y + tops[1])]
+    pts += [(x + lx, y + tops[lx]) for lx in range(1, w)]
+    pts.append((x + w, y + h))
+    draw.polygon(pts, fill=COAST)
+    for lx in range(1, w):
+        draw.point((x + lx, y + tops[lx] - 1), fill=CLOUD)
+    # the surf wash spills one pixel past the left edge of the box,
+    # a short pale column where the shore profile starts
+    draw.rectangle([x - 1, y + 113, x - 1, y + 117], fill=CLOUD)
+    # a second, fainter foam line breaks above the surf where the
+    # swell peaks (measured runs, one pixel above the surf line)
+    foam = [
+        (108, [(245, 245)]), (109, [(255, 255)]),
+        (110, [(204, 204), (491, 563), (567, 573)]),
+        (111, [(276, 276), (481, 481), (583, 583)]),
+        (112, [(163, 163), (286, 286)]),
+        (113, [(296, 296), (604, 604)]),
+        (114, [(140, 140), (614, 614)]),
+        (115, [(27, 27), (128, 128), (317, 317), (624, 624)]),
+        (116, [(116, 116), (327, 327)]),
+        (117, [(54, 54), (104, 104), (368, 368), (645, 645),
+               (654, 654)]),
+        (118, [(93, 93)]), (119, [(81, 81)]),
+    ]
+    for ry, runs in foam:
+        for rx0, rx1 in runs:
+            draw.rectangle([x + rx0, y + ry, x + rx1, y + ry],
+                           fill=CLOUD)
+    # three wave arcs offshore
+    for wx in (x + 103, x + 248, x + 392):
+        draw.arc([wx, y + 103, wx + 28, y + 113], 180, 360, fill=SURF,
+                 width=2)
+    # one palm at lower right: fronds and a leftward-drifting trunk,
+    # as measured row runs
+    palm = [
+        (91, [(561, 561, "F"), (569, 570, "F")]),
+        (92, [(560, 562, "F"), (569, 570, "F")]),
+        (93, [(561, 563, "F"), (568, 569, "F")]),
+        (94, [(562, 564, "F"), (568, 569, "F"), (578, 578, "F")]),
+        (95, [(555, 555, "F"), (563, 565, "F"), (567, 568, "F"),
+              (575, 578, "F")]),
+        (96, [(555, 561, "F"), (564, 568, "F"), (573, 575, "F")]),
+        (97, [(561, 567, "F"), (570, 572, "F")]),
+        (98, [(566, 570, "F")]),
+        (99, [(566, 566, "T"), (567, 567, "F"), (568, 568, "T")]),
+        (100, [(566, 568, "T")]), (101, [(566, 568, "T")]),
+        (102, [(565, 567, "T")]), (103, [(565, 567, "T")]),
+        (104, [(565, 567, "T")]), (105, [(565, 567, "T")]),
+        (106, [(565, 567, "T")]), (107, [(565, 567, "T")]),
+        (108, [(564, 566, "T")]), (109, [(564, 566, "T")]),
+        (110, [(564, 566, "T")]), (111, [(564, 566, "T")]),
+        (112, [(564, 566, "T")]), (113, [(564, 566, "T")]),
+        (114, [(564, 566, "T")]), (115, [(563, 565, "T")]),
+        (116, [(563, 565, "T")]), (117, [(563, 565, "T")]),
+        (118, [(563, 565, "T")]), (119, [(563, 565, "T")]),
+        (120, [(563, 565, "T")]), (121, [(562, 564, "T")]),
+        (122, [(562, 564, "T")]), (123, [(562, 564, "T")]),
+        (124, [(562, 564, "T")]),
+    ]
+    for ry, runs in palm:
+        for rx0, rx1, code in runs:
+            draw.rectangle([x + rx0, y + ry, x + rx1, y + ry],
+                           fill=(90, 64, 40) if code == "T"
+                           else (52, 116, 56))
 
 
-def flame(draw, bx, by, s, seed=3):
-    """A small teardrop flame: orange body, yellow core."""
-    draw.polygon([(bx - s, by), (bx, by - int(2.6 * s)), (bx + s, by)], fill=(232, 110, 20))
-    draw.polygon([(bx - s // 2, by), (bx, by - int(1.5 * s)), (bx + s // 2, by)],
-                 fill=(250, 190, 60))
-
-
-def tanker(draw, x, y, w, hull=(40, 44, 54), deck=(120, 40, 36),
-           tall_bridge=False):
-    """A tanker silhouette: hull, deck line, bridge block, funnel.
-    tall_bridge draws the bridge block ~1.6x taller with an extra
-    window row, so that hull reads as an upright superstructure
-    instead of a low grey slab - the middle Hormuz hull uses it."""
-    h = max(8, w // 7)
-    draw.polygon([(x, y), (x + w, y), (x + w - h, y + h), (x + h, y + h)], fill=hull)
-    draw.rectangle([x + 2, y - 3, x + w - 2, y], fill=deck)
-    bw = max(6, w // 8)
-    bh = int(h * 1.6) if tall_bridge else h
-    draw.rectangle([x + w - bw - 6, y - 3 - bh, x + w - 6, y - 3], fill=(225, 222, 214))
-    win_rows = 2 if tall_bridge else 1
-    for r in range(win_rows):
-        for i in range(3):
-            draw.rectangle([x + w - bw - 4 + i * 3,
-                            y - 3 - bh + 2 + r * 5,
-                            x + w - bw - 3 + i * 3,
-                            y - 3 - bh + 4 + r * 5], fill=(250, 210, 90))
-    draw.rectangle([x + w // 3, y - 3 - h // 2, x + w // 3 + 4, y - 3], fill=(30, 30, 34))
-
-
-def smoke_up(draw, x, y, s, tone=(168, 160, 150)):
-    """Smoke rising straight up: stacked ellipses on one vertical
-    that taper and drift slightly as they rise, so the plume reads
-    as smoke - never a leaning slab across a hull's bridge, and
-    never a uniform tower."""
-    draw.ellipse([x - s, y - s, x + s, y + s], fill=tone)
-    r2 = max(2, int(s * 0.75))
-    draw.ellipse([x + 2 - r2, y - int(1.5 * s) - r2, x + 2 + r2,
-                  y - int(1.5 * s) + r2], fill=(188, 180, 170))
-    r3 = max(2, int(s * 0.55))
-    draw.ellipse([x - 1 - r3, y - int(2.6 * s) - r3, x - 1 + r3,
-                  y - int(2.6 * s) + r3], fill=(205, 198, 188))
-
-
-def smoke(draw, x, y, s, tone=(168, 160, 150)):
-    """Attached lightened smoke: overlapping soft-grey ellipses."""
-    draw.ellipse([x, y - s, x + 2 * s, y + s], fill=tone)
-    draw.ellipse([x + s, y - int(1.7 * s), x + 3 * s, y], fill=(188, 180, 170))
-    draw.ellipse([x + int(1.8 * s), y - int(2.3 * s), x + int(3.4 * s), y - s],
-                 fill=(205, 198, 188))
-
-
-# ---------------------------------------------------------------- scenes
-
-def paint_sea_strike(draw, x, y, w, h, spec):
-    # Dusk sky over a strait; island headland on the right.
-    draw.rectangle([x, y, x + w, y + h], fill=(52, 62, 92))
-    draw.rectangle([x, y, x + w, y + int(h * 0.42)], fill=(196, 96, 52))
-    draw.rectangle([x, y, x + w, y + int(h * 0.22)], fill=(120, 66, 66))
-    sea_y = y + int(h * 0.58)
-    draw.rectangle([x, sea_y, x + w, y + h], fill=(36, 74, 96))
-    # One small half-disc sun low on the horizon.
-    sun_r = max(6, h // 9)
-    draw.pieslice([x + int(w * 0.30) - sun_r, sea_y - sun_r,
-                   x + int(w * 0.30) + sun_r, sea_y + sun_r], 180, 360,
-                  fill=(250, 205, 110))
-    # Island headland, kept high and behind the third hull.
-    draw.polygon([(x + int(w * 0.70), sea_y), (x + int(w * 0.82), y + int(h * 0.28)),
-                  (x + int(w * 0.94), y + int(h * 0.32)), (x + w, sea_y)], fill=(38, 40, 38))
-    # Three tankers, each hull fully separated by open water and each
-    # carrying its own flame plume, so all three stay countable. The
-    # middle hull - the largest, and the one whose diagonal smoke
-    # plume used to lean across its bridge like a capsized
-    # superstructure - gets the tall upright bridge and a vertical
-    # smoke column, the same silhouette family as the other two.
-    tanker(draw, x + int(w * 0.03), sea_y + int(h * 0.08), int(w * 0.16))
-    smoke(draw, x + int(w * 0.10), sea_y + int(h * 0.01), 3)
-    flame(draw, x + int(w * 0.09), sea_y + int(h * 0.04), 4)
-    tanker(draw, x + int(w * 0.30), sea_y + int(h * 0.14), int(w * 0.28),
-           tall_bridge=True)
-    # Round 5: smoke FIRST, flame on top, smoke column offset right
-    # of the flame (0.47w vs 0.44w). Round 4 drew smoke_up after the
-    # flame at the same x, so the grey ellipses buried the orange
-    # flame - only 16 orange px survived. The tall bridge is untouched.
-    smoke_up(draw, x + int(w * 0.47), sea_y + int(h * 0.02), 5)
-    flame(draw, x + int(w * 0.44), sea_y + int(h * 0.08), 6)
-    star_burst(draw, x + int(w * 0.80), y + int(h * 0.24), max(7, h // 8),
-               (255, 150, 40), seed=11)
-    tanker(draw, x + int(w * 0.68), sea_y + int(h * 0.24), int(w * 0.20))
-    smoke(draw, x + int(w * 0.79), sea_y + int(h * 0.12), 4)
-    # Round 7: the third flame sat 2 px above its hull's deck with
-    # its tip touching the island's bottom edge, so it read as a
-    # fire on the island, not on the ship. Nudged west and down so
-    # its base lands on the deck line (base y = deck y + 1).
-    flame(draw, x + int(w * 0.77), sea_y + int(h * 0.22), 5)
-    # Shore missile launcher, bottom-left foreground.
-    lx, ly = x + int(w * 0.05), y + h - 6
-    draw.rectangle([lx, ly - 6, lx + 20, ly], fill=(24, 26, 24))
-    draw.line([lx + 4, ly - 6, lx + 16, ly - 18], fill=(24, 26, 24), width=3)
-    draw.rectangle([lx + 13, ly - 22, lx + 21, ly - 15], fill=(60, 62, 58))
-
-
-def paint_bridge_fallen(draw, x, y, w, h, spec):
-    draw.rectangle([x, y, x + w, y + h], fill=(168, 196, 208))
-    water_y = y + int(h * 0.68)
-    draw.rectangle([x, water_y, x + w, y + h], fill=(70, 110, 138))
-    deck_y = y + int(h * 0.40)
-    tower_x = [x + int(w * 0.16), x + int(w * 0.80)]
-    for tx in tower_x:
-        draw.rectangle([tx, y + int(h * 0.10), tx + 7, water_y], fill=(70, 76, 84))
-    # Suspension cables on the standing parts only.
-    draw.line([x, deck_y - 4, tower_x[0] + 3, y + int(h * 0.12)], fill=(50, 54, 60), width=2)
-    draw.line([tower_x[1] + 3, y + int(h * 0.12), x + w, deck_y - 4], fill=(50, 54, 60), width=2)
-    # Standing deck stubs and the fallen middle span, tilted into the water.
-    draw.rectangle([x, deck_y, tower_x[0] + 40, deck_y + 6], fill=(52, 56, 64))
-    draw.rectangle([tower_x[1] - 34, deck_y, x + w, deck_y + 6], fill=(52, 56, 64))
-    mid_x = x + int(w * 0.40)
-    draw.polygon([(mid_x, deck_y + 2), (mid_x + int(w * 0.22), deck_y + 10),
-                  (mid_x + int(w * 0.22), deck_y + 16), (mid_x, deck_y + 8)],
-                 fill=(52, 56, 64))
-    # Flat debris fragments at the waterline plus ripple arcs.
-    rng = Lcg(23)
-    for i in range(7):
-        dx = mid_x - 14 + rng.below(int(w * 0.30))
-        dy = water_y + 2 + rng.below(5)
-        draw.rectangle([dx, dy, dx + 7, dy + 3], fill=(88, 96, 104))
-    for r in (10, 18, 26):
-        draw.arc([mid_x + 16 - r, water_y - r // 3, mid_x + 16 + r, water_y + r // 2],
-                 0, 180, fill=(210, 226, 234), width=2)
-
-
-def paint_clinic_ward(draw, x, y, w, h, spec):
-    # Ebola treatment ward: pale wall, floor, a red-cross sign, two
-    # responders in protective suits and three occupied beds.
-    draw.rectangle([x, y, x + w, y + h], fill=(226, 222, 206))
-    floor_y = y + int(h * 0.74)
-    draw.rectangle([x, floor_y, x + w, y + h], fill=(176, 168, 148))
-    # Red-cross sign on the back wall.
-    sx, sy = x + int(w * 0.47), y + int(h * 0.08)
-    draw.rectangle([sx, sy, sx + 22, sy + 22], fill=(246, 244, 238), outline=INK)
-    draw.rectangle([sx + 9, sy + 4, sx + 13, sy + 18], fill=(178, 44, 40))
-    draw.rectangle([sx + 4, sy + 9, sx + 18, sy + 13], fill=(178, 44, 40))
-    # Three beds: frame, pillow, a patient's head and a blanket body.
-    blanket = [(150, 96, 84), (96, 116, 140), (140, 128, 92)]
-    for i, fx in enumerate((0.05, 0.35, 0.65)):
-        bx = x + int(w * fx)
-        bw = int(w * 0.25)
-        by = y + int(h * 0.60)
-        draw.rectangle([bx, by, bx + bw, by + 5], fill=(120, 118, 112))
-        draw.line([bx + 3, by + 5, bx + 3, floor_y + 6], fill=(90, 88, 84), width=2)
-        draw.line([bx + bw - 3, by + 5, bx + bw - 3, floor_y + 6],
-                  fill=(90, 88, 84), width=2)
-        draw.rectangle([bx + 2, by - 6, bx + 13, by], fill=(244, 242, 236))
-        draw.ellipse([bx + 4, by - 13, bx + 12, by - 5], fill=(198, 150, 110))
-        draw.rectangle([bx + 13, by - 5, bx + bw - 2, by], fill=blanket[i])
-    # Two responders in pale protective suits, one at each end.
-    for fx, suit in ((0.325, (238, 240, 242)), (0.94, (214, 228, 230))):
-        cx = x + int(w * fx)
-        top = y + int(h * 0.30)
-        draw.ellipse([cx - 8, top, cx + 8, top + 16], fill=suit, outline=(120, 124, 126))
-        draw.rectangle([cx - 6, top + 6, cx + 6, top + 11], fill=(96, 130, 150))
-        draw.rectangle([cx - 10, top + 16, cx + 10, floor_y + 4], fill=suit)
-        draw.line([cx - 10, top + 26, cx + 10, top + 26], fill=(190, 196, 198), width=2)
-    # An IV stand beside the middle bed.
-    ix = x + int(w * 0.625)
-    draw.line([ix, y + int(h * 0.34), ix, floor_y + 2], fill=(100, 100, 100), width=2)
-    draw.rectangle([ix - 4, y + int(h * 0.26), ix + 4, y + int(h * 0.36)],
-                   fill=(196, 220, 228), outline=(100, 110, 116))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="br")
-
-
-def paint_cyclone(draw, x, y, w, h, spec):
-    # R6: the spiral now FILLS its frame. R5's spiral (max radius
-    # 0.52h) covered ~35% of the 655 px hero and left ~55% empty
-    # blue. The new spiral is a wide flat cyclone seen at an
-    # angle: concentric elliptical arms with horizontal radius
-    # 0.36w (~70% of the frame width), vertical squash 0.26 so
-    # the arms stay inside the 134 px scene height, rotating
-    # start angles so the arms spiral inward to a dark eye.
-    # A coastline + rain bands ground it: the storm is making
-    # landfall, not floating on blank sea.
-    draw.rectangle([x, y, x + w, y + h], fill=(44, 92, 128))
-    # (No cloud arcs in the top corners: an earlier version drew
-    # them with centres above the scene box and the arcs spilled
-    # over the figure strip above the hero. Everything in this
-    # painter now stays strictly inside (x, y, w, h).)
-    cx, cy = x + int(w * 0.46), y + int(h * 0.52)
-    # Spiral arms: rx from 0.36w down, ry = 0.26 * rx clamped to
-    # 60 so no arc leaves the scene box vertically; each arm is
-    # a 210-degree arc whose start rotates 65 degrees per arm,
-    # so the breaks march around the eye and the arms read as a
-    # spiral, not closed rings.
-    rx_max = int(w * 0.36)
-    i = 0
-    r = rx_max
-    while r >= 14:
-        ry = max(4, min(int(r * 0.26), 60))
-        tone = (226, 232, 236) if i % 2 == 0 else (170, 196, 214)
-        draw.arc([cx - r, cy - ry, cx + r, cy + ry],
-                 i * 65, i * 65 + 210, fill=tone, width=6)
-        r -= 20
-        i += 1
-    # Dark eye with a pale ring at the spiral centre.
-    draw.ellipse([cx - 9, cy - 7, cx + 9, cy + 7], fill=(30, 60, 92))
-    draw.ellipse([cx - 9, cy - 7, cx + 9, cy + 7], outline=(226, 232, 236), width=2)
-    # Rain bands: three short pale streaks in the upper right,
-    # slanting down toward the eye.
-    for k in range(3):
-        bx0 = x + int(w * (0.72 + 0.07 * k))
-        draw.line([bx0, y + 6, bx0 + 20, y + int(h * 0.30)],
-                  fill=(190, 210, 226), width=2)
-    # Coastline: land along the bottom, wavy top edge, with a
-    # pale surf line and wave arcs just offshore. The storm's
-    # lowest arms run into the coast instead of ending in blue.
-    coast = [(x, y + h), (x, y + int(h * 0.88))]
-    for k in range(9):
-        fx = x + int(w * k / 8)
-        fy = y + int(h * (0.85 + 0.04 * math.sin(k * 1.7)))
-        coast.append((fx, fy))
-    coast.append((x + w, y + int(h * 0.88)))
-    coast.append((x + w, y + h))
-    draw.polygon(coast, fill=(62, 104, 70))
-    draw.line([(fx, fy) for fx, fy in coast[1:-1]], fill=(226, 232, 236), width=2)
-    for k in range(3):
-        wx = x + int(w * (0.18 + 0.22 * k))
-        wy = y + int(h * 0.80)
-        draw.arc([wx - 14, wy - 4, wx + 14, wy + 6], 180, 360,
-                 fill=(200, 225, 235), width=2)
-    # One palm on the coast, lower right, bending in the wind.
-    ix, iy = x + int(w * 0.86), y + int(h * 0.93)
-    draw.line([ix, iy, ix + 4, iy - 26], fill=(90, 64, 40), width=3)
-    for ang in (195, 240, 285, 330):
-        ex = ix + 4 + int(13 * math.cos(math.radians(ang)))
-        ey = iy - 26 + int(8 * math.sin(math.radians(ang)))
-        draw.line([ix + 4, iy - 26, ex, ey], fill=(52, 116, 56), width=2)
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
-
-
-def _flag_detail(draw, fx, fy, fw, fh, name, base):
-    """A flag rectangle with national detail where the name calls for it."""
-    draw.rectangle([fx, fy, fx + fw, fy + fh], fill=base, outline=(20, 20, 20))
-    if name == "CHINA":
-        draw.rectangle([fx, fy, fx + fw, fy + fh], fill=(196, 32, 36))
-        draw.polygon([(fx + 7, fy + 4), (fx + 9, fy + 9), (fx + 12, fy + 9),
-                      (fx + 10, fy + 11), (fx + 11, fy + 15), (fx + 7, fy + 12),
-                      (fx + 4, fy + 15), (fx + 5, fy + 11), (fx + 2, fy + 9),
-                      (fx + 5, fy + 9)], fill=(250, 214, 60))
-        for sx, sy in ((16, 4), (19, 8), (19, 13), (15, 16)):
-            draw.ellipse([fx + sx - 1, fy + sy - 1, fx + sx + 2, fy + sy + 2],
-                         fill=(250, 214, 60))
-    elif name == "RUSSIA":
-        third = fh // 3
-        draw.rectangle([fx, fy, fx + fw, fy + third], fill=(238, 238, 238))
-        draw.rectangle([fx, fy + third, fx + fw, fy + 2 * third], fill=(52, 84, 168))
-        draw.rectangle([fx, fy + 2 * third, fx + fw, fy + fh], fill=(196, 40, 44))
-    elif name == "USA":
-        stripe = max(2, fh // 7)
-        for i in range(7):
-            tone = (178, 44, 52) if i % 2 == 0 else (240, 240, 240)
-            draw.rectangle([fx, fy + i * stripe, fx + fw, fy + (i + 1) * stripe], fill=tone)
-        # Round 7: saturated navy canton with visible white star
-        # dots - the old washed grey-blue canton read as a plain
-        # striped bar at judge scale.
-        cw_ = int(fw * 0.42)
-        draw.rectangle([fx, fy, fx + cw_, fy + 4 * stripe], fill=(22, 40, 108))
-        for r_ in range(4):
-            for c_ in range(6):
-                sx_ = fx + 4 + c_ * max(3, (cw_ - 6) // 6) + (2 if r_ % 2 else 0)
-                sy_ = fy + 3 + r_ * max(3, (4 * stripe - 4) // 4)
-                draw.ellipse([sx_ - 1, sy_ - 1, sx_ + 1, sy_ + 1],
-                             fill=(245, 245, 245))
-    elif name == "EU":
-        # R3: EU circle of stars - blue field, twelve gold dots
-        # in a ring. At flag size the ring reads as the EU emblem.
-        draw.rectangle([fx, fy, fx + fw, fy + fh], fill=(0, 51, 153))
-        ccx, ccy = fx + fw // 2, fy + fh // 2
-        rad = max(4, min(fw, fh) // 2 - 5)
-        for k in range(12):
-            ang = math.pi * 2 * k / 12 - math.pi / 2
-            sx_ = int(ccx + rad * math.cos(ang))
-            sy_ = int(ccy + rad * math.sin(ang) * 0.9)
-            draw.ellipse([sx_ - 1, sy_ - 1, sx_ + 1, sy_ + 1],
-                         fill=(255, 204, 0))
-    elif name == "UK":
-        # R3: simplified Union Jack - blue field, white saltire
-        # and cross, red cross over them.
-        draw.rectangle([fx, fy, fx + fw, fy + fh], fill=(0, 36, 125))
-        draw.line([fx, fy, fx + fw, fy + fh], fill=(240, 240, 240), width=3)
-        draw.line([fx + fw, fy, fx, fy + fh], fill=(240, 240, 240), width=3)
-        draw.line([fx + fw // 2, fy, fx + fw // 2, fy + fh],
-                  fill=(240, 240, 240), width=6)
-        draw.line([fx, fy + fh // 2, fx + fw, fy + fh // 2],
-                  fill=(240, 240, 240), width=6)
-        draw.line([fx + fw // 2, fy, fx + fw // 2, fy + fh],
-                  fill=(200, 16, 46), width=2)
-        draw.line([fx, fy + fh // 2, fx + fw, fy + fh // 2],
-                  fill=(200, 16, 46), width=2)
-
-
-def paint_summit(draw, x, y, w, h, spec):
-    draw.rectangle([x, y, x + w, y + h], fill=(88, 94, 112))
-    draw.rectangle([x, y, x + w, y + int(h * 0.62)], fill=(104, 110, 128))
-    flags = spec.get("flags") or [["CHINA", [178, 34, 34]], ["RUSSIA", [52, 84, 160]],
-                                  ["USA", [60, 59, 110]]]
-    # R3: names, hair and suits come from the spec so the same
-    # three-leader staging serves another summit (EU-UK: von der
-    # Leyen, Costa, Burnham). Defaults keep the Shenzhen staging.
-    names = spec.get("names") or ["XI", "PUTIN", "TRUMP"]
-    # JSON carries colours as lists; PIL needs tuples.
-    hair = [tuple(c) for c in
-            (spec.get("hair") or [(18, 18, 18), (168, 168, 168), (232, 190, 90)])]
-    suits = [tuple(c) for c in
-             (spec.get("suits") or [(30, 34, 52), (52, 40, 40), (28, 44, 84)])]
-    skin = (232, 192, 158)
-    xs = [x + int(w * f) for f in (0.20, 0.50, 0.80)]
-    fw, fh = int(w * 0.17), int(h * 0.26)
-    for (fname, rgb), cx in zip(flags, xs):
-        _flag_detail(draw, cx - fw // 2, y + int(h * 0.07), fw, fh, fname, tuple(rgb))
-        # Round 7: the flag label chips are drawn AFTER the arms and
-        # the clasp (see below), so no arm or cuff can ever cover a
-        # chip - the round-6 cuff/chip collision cannot recur.
-    table_y = y + int(h * 0.70)
-    head_top = y + int(h * 0.40)
-    # R4: the summit now fills a 491 px hero, not a 240 px one, so
-    # the figures scale with the box height (1.5 at h=140 -> 1.8 at
-    # h=168) and the left figure's reaching arm bends at the
-    # midpoint between the left and middle figures, not at a fixed
-    # +185 px that used to read as one long bar across the table.
-    # (At 240 px wide the old elbow sat past the clasp; no story
-    # uses this painter at that width any more.)
-    fig_scale = 1.5 * h / 140.0
-    hx = (xs[1] + xs[2]) // 2
-    hy = table_y - int(h * 0.30)
-    hx2 = hx - 10  # clasp centre, shifted west: see the cuff note below
-    elbow01 = (xs[0] + xs[1]) // 2 + 10
-    draw.line([xs[0] + 16, table_y - 5, elbow01, table_y - 28],
-              fill=suits[0], width=7)
-    draw.line([elbow01, table_y - 28, hx2 - 38, hy + 2],
-              fill=suits[0], width=7)
-    for i, cx in enumerate(xs):
-        person(draw, cx, head_top, fig_scale, skin, hair[i], suits[i])
-        # Microphone angled in from the table.
-        draw.line([cx + 18, table_y, cx + 7, head_top + 30], fill=(16, 16, 18), width=2)
-        draw.ellipse([cx + 4, head_top + 25, cx + 10, head_top + 31], fill=(16, 16, 18))
-    # The three-way clasp ABOVE the table edge, against the wall.
-    # R2: shrunk to ~1/3 of the round-7 area (every offset from the
-    # clasp centre scaled ~0.58), with thinner arms (13 -> 8) and
-    # narrower cuffs, so the three faces/shoulders and the flags +
-    # nameplates carry the scene instead of one fleshy blob. The
-    # right cuff runs under the right flag's chip's left edge, but
-    # the chips are drawn after this block, so they always win.
-    skin_a = skin                    # middle figure's hand, from the left
-    skin_b = (206, 164, 124)         # right figure's hand, from the right
-    seam = (128, 90, 58)
-    # Bent arms: table line -> elbow -> cuff.
-    draw.line([xs[1] + 16, table_y - 4, hx2 - 100, table_y - 20],
-              fill=suits[1], width=8)
-    draw.line([hx2 - 100, table_y - 20, hx2 - 34, hy + 3],
-              fill=suits[1], width=8)
-    draw.line([xs[2] - 16, table_y - 4, hx2 + 106, table_y - 20],
-              fill=suits[2], width=8)
-    draw.line([hx2 + 106, table_y - 20, hx2 + 34, hy + 3],
-              fill=suits[2], width=8)
-    # Cuffs flank the smaller clasp; sleeves meet the cuffs.
-    draw.rectangle([hx2 - 49, hy - 7, hx2 - 32, hy + 8], fill=(240, 238, 230))
-    draw.rectangle([hx2 + 32, hy - 7, hx2 + 44, hy + 8], fill=(240, 238, 230))
-    # Two palms: left palm first, right palm overlapping it.
-    draw.ellipse([hx2 - 31, hy - 12, hx2 + 3, hy + 12], fill=skin_a,
-                 outline=seam, width=2)
-    draw.ellipse([hx2 - 3, hy - 13, hx2 + 31, hy + 11], fill=skin_b,
-                 outline=seam, width=2)
-    # Seam where the palms meet: splits the clasp into two masses.
-    draw.line([hx2 - 1, hy - 10, hx2 + 1, hy + 10], fill=seam, width=3)
-    # Finger separations: thinner dark strokes across each palm's top.
-    for fx in (hx2 - 25, hx2 - 19, hx2 - 12):
-        draw.line([fx, hy - 10, fx + 3, hy - 1], fill=(170, 128, 88), width=2)
-    for fx in (hx2 + 12, hx2 + 19, hx2 + 25):
-        draw.line([fx, hy - 11, fx - 3, hy - 2], fill=(152, 112, 78), width=2)
-    # Crossed thumbs over the top, one from each hand.
-    draw.polygon([(hx2 - 15, hy - 7), (hx2 - 3, hy - 20), (hx2 + 3, hy - 17),
-                  (hx2 - 8, hy - 5)], fill=skin_a, outline=seam)
-    draw.polygon([(hx2 + 15, hy - 7), (hx2 + 3, hy - 20), (hx2 - 3, hy - 17),
-                  (hx2 + 8, hy - 5)], fill=skin_b, outline=seam)
-    # The left figure's hand on the clasp's left edge, in a third
-    # skin tone, so three hands converge on the one contact point.
-    draw.ellipse([hx2 - 41, hy - 3, hx2 - 27, hy + 6], fill=(220, 178, 140),
-                 outline=seam, width=2)
-    for fx in (hx2 - 37, hx2 - 33):
-        draw.line([fx, hy - 2, fx + 2, hy + 3], fill=(178, 138, 100), width=2)
-    # Flag label chips last (round 7): nothing drawn above can cover
-    # them - same positions the round-6 chips occupied.
-    for (fname, rgb), cx in zip(flags, xs):
-        label_chip(draw, cx - fw // 2, y + int(h * 0.07) + fh + 1, fw, 14,
-                   fname, size=9, align="tl")
-    # The long table and its name plates.
-    draw.rectangle([x + int(w * 0.04), table_y, x + int(w * 0.96), y + h], fill=(96, 66, 40))
-    draw.rectangle([x + int(w * 0.04), table_y, x + int(w * 0.96), table_y + 4],
-                   fill=(140, 104, 62))
-    fnt = ImageFont.truetype(SANS_BOLD, 10)
-    for name, cx in zip(names, xs):
-        pw = width_of(name, fnt) + 12
-        draw.rectangle([cx - pw // 2, table_y + 8, cx + pw // 2, table_y + 24],
-                       fill=(238, 232, 216))
-        draw.text((cx - width_of(name, fnt) // 2, table_y + 11), name,
-                  font=fnt, fill=(30, 28, 26))
-
-
-def paint_summit_side(draw, x, y, w, h, spec):
-    # R5: the EU-UK summit redrawn from a different angle - profile,
-    # not frontal. The three leaders sit in profile facing left
-    # along a desk seen from the side; the flags hang on the wall
-    # behind them; the action is a document being signed on the
-    # desk (two small hands at desk level), NOT a face-height
-    # three-way clasp. Nothing is shared with paint_summit's
-    # frontal staging: no facing-viewer heads, no central clasp,
-    # no flag poles behind heads. Names/hair/flags come from the
-    # spec, same defaults as paint_summit.
+def paint_summit_side(img, draw, box, story, num):
+    """Summit signing: three delegates at a long desk under their
+    flags, nameplates on the desk front, papers and hands between
+    the first two as the deal is signed."""
+    x, y, w, h = box
     draw.rectangle([x, y, x + w, y + h], fill=(104, 110, 128))
-    draw.rectangle([x, y + int(h * 0.60), x + w, y + int(h * 0.62)],
-                   fill=(84, 90, 106))
-    flags = spec.get("flags") or [["CHINA", [178, 34, 34]], ["RUSSIA", [52, 84, 160]],
-                                  ["USA", [60, 59, 110]]]
-    names = spec.get("names") or ["XI", "PUTIN", "TRUMP"]
-    hair = [tuple(c) for c in
-            (spec.get("hair") or [(18, 18, 18), (168, 168, 168), (232, 190, 90)])]
-    suits = [tuple(c) for c in
-             (spec.get("suits") or [(30, 34, 52), (52, 40, 40), (28, 44, 84)])]
-    skin = (232, 192, 158)
-    xs = [x + int(w * f) for f in (0.18, 0.50, 0.82)]
-    fw, fh = int(w * 0.15), int(h * 0.20)
-    for (fname, rgb), cx in zip(flags, xs):
-        _flag_detail(draw, cx - fw // 2, y + int(h * 0.05), fw, fh, fname, tuple(rgb))
-        label_chip(draw, cx - fw // 2, y + int(h * 0.05) + fh + 1, fw, 14,
-                   fname, size=9, align="tl")
-    # The desk: top strip, then the front face down to the bottom.
-    desk_y = y + int(h * 0.62)
-    draw.rectangle([x + int(w * 0.03), desk_y, x + int(w * 0.97), desk_y + 4],
-                   fill=(140, 104, 62))
-    draw.rectangle([x + int(w * 0.03), desk_y + 4, x + int(w * 0.97), y + h],
-                   fill=(96, 66, 40))
-    # Signing document on the desk top, between the left and middle
-    # leaders, with two small hands on it at DESK level.
-    doc_x0, doc_x1 = x + int(w * 0.36), x + int(w * 0.58)
-    doc_y = desk_y - 8
-    draw.rectangle([doc_x0, doc_y, doc_x1, desk_y], fill=(246, 244, 238))
-    for ly in (doc_y + 3, doc_y + 6):
-        draw.line([doc_x0 + 4, ly, doc_x1 - 4, ly], fill=(150, 148, 140), width=1)
-    head_top = y + int(h * 0.38)
-    hr = max(5, int(h * 0.085))
-    for i, cx in enumerate(xs):
-        # Profile head facing left: skin ellipse, hair cap over the
-        # top and back (right) side, a small nose on the left edge.
-        draw.ellipse([cx - hr, head_top, cx + hr, head_top + 2 * hr], fill=skin)
-        draw.pieslice([cx - hr, head_top - 1, cx + hr, head_top + 2 * hr],
-                      180, 360, fill=hair[i])
-        draw.rectangle([cx + hr - 3, head_top + 2, cx + hr + 1,
-                        head_top + hr + 4], fill=hair[i])
-        draw.polygon([(cx - hr, head_top + hr), (cx - hr - 4, head_top + hr + 3),
-                      (cx - hr, head_top + hr + 5)], fill=skin)
-        # Shoulders behind the desk top; white collar sliver.
-        draw.rectangle([cx - int(w * 0.055), head_top + 2 * hr - 1,
-                        cx + int(w * 0.055), desk_y], fill=suits[i])
-        draw.rectangle([cx - 4, head_top + 2 * hr - 1, cx + 4,
-                        head_top + 2 * hr + 7], fill=(240, 238, 230))
-        # Microphone angled up from the desk to the head.
-        draw.line([cx + 16, desk_y, cx + 7, head_top + 2 * hr + 2],
-                  fill=(16, 16, 18), width=2)
-        draw.ellipse([cx + 4, head_top + 2 * hr - 2, cx + 10,
-                      head_top + 2 * hr + 4], fill=(16, 16, 18))
-    # Signing arms: thin suit lines from the left and middle
-    # leaders' shoulders down to the document, hands ON the paper.
-    draw.line([xs[0] + 14, head_top + 2 * hr + 8, doc_x0 + 8, doc_y + 4],
-              fill=suits[0], width=5)
-    draw.line([xs[1] - 14, head_top + 2 * hr + 8, doc_x1 - 8, doc_y + 4],
-              fill=suits[1], width=5)
-    draw.ellipse([doc_x0 + 2, doc_y - 1, doc_x0 + 12, doc_y + 9],
-                 fill=(232, 192, 158), outline=(128, 90, 58), width=1)
-    draw.ellipse([doc_x1 - 12, doc_y - 1, doc_x1 - 2, doc_y + 9],
-                 fill=(206, 164, 124), outline=(128, 90, 58), width=1)
-    # A pen in the middle leader's hand, resting on the paper.
-    draw.line([doc_x1 - 9, doc_y + 2, doc_x1 - 3, doc_y + 7],
-              fill=(20, 20, 24), width=2)
-    # Nameplates on the desk front, one under each leader.
-    fnt = ImageFont.truetype(SANS_BOLD, 9)
-    for name, cx in zip(names, xs):
-        pw = width_of(name, fnt) + 10
-        py = desk_y + 10
-        draw.rectangle([cx - pw // 2, py, cx + pw // 2, py + 15],
+    draw.rectangle([x, y + 80, x + w, y + 83], fill=(84, 90, 106))
+    # the long desk
+    draw.rectangle([x + 9, y + 83, x + 317, y + 86], fill=(140, 104, 62))
+    draw.rectangle([x + 9, y + 87, x + 317, y + 133], fill=(96, 66, 40))
+    spec = story.get("scene_spec") or {}
+    # flags: two EU blue with gold star circles, one Union Jack
+    for fx in (34, 139):
+        draw.rectangle([x + fx, y + 6, x + fx + 49, y + 32],
+                       fill=(0, 51, 153))
+        for k in range(12):
+            ang = math.radians(30 * k)
+            sx = int(fx + 24 + 8 * math.cos(ang))
+            sy = int(19 + 7.5 * math.sin(ang))
+            for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+                draw.point((x + sx + dx, y + sy + dy), fill=(255, 204, 0))
+    ux, uy = x + 244, y + 6
+    draw.rectangle([ux, uy, ux + 49, uy + 26], fill=(0, 36, 125))
+    diag_tl = [(0, 0), (2, 0), (4, 1), (6, 2), (8, 3), (9, 4), (11, 5),
+               (13, 6), (15, 7), (17, 8), (19, 9), (21, 10), (17, 10),
+               (15, 9), (13, 8), (11, 7), (9, 6), (8, 5), (6, 4),
+               (4, 3), (2, 2), (0, 1)]
+    for sx, sy in ((0, 0), (49, 0), (0, 26), (49, 26)):
+        pts = []
+        for px, py in diag_tl:
+            qx = px if sx == 0 else 49 - px
+            qy = py if sy == 0 else 26 - py
+            pts.append((ux + qx, uy + qy))
+        draw.polygon(pts, fill=(240, 240, 240))
+    draw.rectangle([ux + 22, uy, ux + 27, uy + 26], fill=(240, 240, 240))
+    draw.rectangle([ux, uy + 11, ux + 49, uy + 16], fill=(240, 240, 240))
+    draw.rectangle([ux + 24, uy, ux + 25, uy + 26], fill=(200, 16, 46))
+    draw.rectangle([ux, uy + 13, ux + 49, uy + 14], fill=(200, 16, 46))
+    for px, py in ((0, -1), (49, -1), (0, 27), (49, 27)):
+        draw.point((ux + px, uy + py), fill=(240, 240, 240))
+    # delegation chips under the flags
+    for cx, tag in ((38, "EU"), (143, "EU"), (248, "UK")):
+        tw = 23 if tag == "EU" else 25
+        draw.rectangle([x + cx, y + 35, x + cx + tw, y + 51],
+                       fill=(20, 20, 24))
+        draw.text((x + cx + 5, y + 38), tag,
+                  font=font(palette.SANS_BOLD, 9), fill=(245, 242, 235))
+    # three delegates: same hair and face shapes, palette swapped
+    hair_poly = [(55, 49), (61, 49), (63, 50), (64, 51), (70, 52),
+                 (70, 65), (66, 65), (66, 60), (47, 60), (47, 58),
+                 (48, 57), (48, 55), (49, 54), (50, 53), (51, 52),
+                 (52, 51), (53, 50)]
+    face_poly = [(47, 61), (65, 61), (65, 65), (68, 66), (67, 67),
+                 (66, 68), (66, 69), (63, 70), (52, 70), (50, 69),
+                 (50, 68), (49, 67), (47, 66), (45, 65), (43, 64),
+                 (44, 63), (46, 62)]
+    hairs = spec.get("hair") or [(212, 192, 132), (178, 178, 178),
+                                 (96, 90, 84)]
+    suits = [(30, 34, 52), (52, 40, 40), (28, 44, 84)]
+    for i in range(3):
+        ox = i * 105
+        draw.polygon([(x + ox + px, y + py) for px, py in hair_poly],
+                     fill=tuple(hairs[i]))
+        draw.polygon([(x + ox + px, y + py) for px, py in face_poly],
+                     fill=(232, 192, 158))
+        draw.rectangle([x + ox + 41, y + 71, x + ox + 75, y + 83],
+                       fill=suits[i])
+        shirt_bot = 77 if i == 1 else 79
+        draw.rectangle([x + ox + 54, y + 71, x + ox + 62, y + shirt_bot],
+                       fill=(240, 238, 230))
+    # the first delegate's arm reaches across to the papers
+    draw.rectangle([x + 71, y + 78, x + 118, y + 81], fill=suits[0])
+    # gooseneck microphones for the outer two (row runs, measured)
+    mic1 = [(70, 64, 66), (71, 63, 67), (72, 62, 68), (73, 62, 68),
+            (74, 62, 68), (75, 63, 67), (76, 64, 68), (77, 67, 69),
+            (78, 68, 70), (79, 69, 71), (80, 70, 71), (81, 71, 71),
+            (82, 73, 74), (83, 73, 73)]
+    mic3 = [(70, 274, 276), (71, 273, 277), (72, 272, 278),
+            (73, 272, 278), (74, 272, 278), (75, 273, 277),
+            (76, 274, 278), (77, 277, 279), (78, 278, 280),
+            (79, 279, 281), (80, 280, 282), (81, 281, 283),
+            (82, 282, 284), (83, 283, 283)]
+    for runs in (mic1, mic3):
+        for ry, rx0, rx1 in runs:
+            draw.rectangle([x + rx0, y + ry, x + rx1, y + ry],
+                           fill=(16, 16, 18))
+    # papers, hands and the middle microphone: measured row runs
+    cluster = [
+        (70, [(169, 171, "M")]),
+        (71, [(168, 172, "M")]),
+        (72, [(167, 173, "M")]),
+        (73, [(167, 173, "M")]),
+        (74, [(122, 126, "O"), (167, 173, "M"), (180, 184, "O")]),
+        (75, [(117, 120, "P"), (121, 121, "O"), (122, 126, "F"),
+              (127, 127, "O"), (128, 145, "P"), (168, 172, "M"),
+              (179, 179, "O"), (180, 184, "T"), (185, 185, "O"),
+              (186, 189, "P")]),
+        (76, [(117, 119, "P"), (120, 120, "O"), (121, 127, "F"),
+              (128, 128, "O"), (129, 145, "P"), (169, 173, "M"),
+              (178, 178, "O"), (179, 185, "T"), (186, 186, "O"),
+              (187, 189, "P")]),
+        (77, [(117, 118, "P"), (119, 119, "O"), (120, 128, "F"),
+              (129, 129, "O"), (130, 145, "P"), (172, 174, "M"),
+              (177, 177, "O"), (178, 180, "T"), (182, 186, "T"),
+              (187, 187, "O"), (188, 189, "P")]),
+        (78, [(119, 119, "O"), (120, 128, "F"), (129, 129, "O"),
+              (177, 177, "O"), (178, 179, "T"), (183, 186, "T"),
+              (187, 187, "O"), (188, 189, "P")]),
+        (79, [(119, 119, "O"), (120, 128, "F"), (129, 129, "O"),
+              (130, 145, "P"), (177, 177, "O"), (178, 180, "T"),
+              (184, 186, "T"), (187, 187, "O"), (188, 189, "P")]),
+        (80, [(119, 119, "O"), (120, 128, "F"), (129, 129, "O"),
+              (130, 145, "P"), (177, 177, "O"), (178, 181, "T"),
+              (186, 186, "T"), (187, 187, "O"), (188, 189, "P")]),
+        (81, [(119, 119, "O"), (120, 128, "F"), (129, 129, "O"),
+              (177, 177, "O"), (178, 183, "T"), (187, 187, "O"),
+              (188, 189, "P")]),
+        (82, [(117, 119, "P"), (120, 120, "O"), (121, 127, "F"),
+              (128, 128, "O"), (129, 145, "P"), (177, 177, "M"),
+              (178, 178, "O"), (179, 184, "T"), (188, 189, "P")]),
+        (83, [(117, 120, "P"), (121, 121, "O"), (122, 126, "F"),
+              (127, 127, "O"), (128, 145, "P"), (178, 178, "M"),
+              (179, 179, "O"), (180, 184, "T"), (185, 185, "O"),
+              (187, 189, "P")]),
+        (84, [(122, 126, "O"), (180, 184, "O")]),
+    ]
+    # grey edges of the paper stack, and the pen in the second hand
+    for ry in (78, 81):
+        draw.rectangle([x + 130, y + ry, x + 145, y + ry],
+                       fill=(150, 148, 140))
+    pen = [(77, 181, 181), (78, 180, 182), (79, 181, 183),
+           (80, 182, 185), (81, 184, 186), (82, 185, 187),
+           (83, 186, 186)]
+    for ry, rx0, rx1 in pen:
+        draw.rectangle([x + rx0, y + ry, x + rx1, y + ry],
+                       fill=(20, 20, 24))
+    inks = {"P": (246, 244, 238), "T": (206, 164, 124),
+            "O": (128, 90, 58), "F": (232, 192, 158), "M": (16, 16, 18)}
+    for ry, runs in cluster:
+        for rx0, rx1, code in runs:
+            draw.rectangle([x + rx0, y + ry, x + rx1, y + ry],
+                           fill=inks[code])
+    # nameplates on the desk front
+    names = spec.get("names") or ["VON DER LEYEN", "COSTA", "BURNHAM"]
+    for (px, tx) in ((13, 18), (142, 147), (237, 242)):
+        pw = {0: 90, 1: 42, 2: 62}[(px // 100) if px < 200 else 2] \
+            if False else (90 if px == 13 else 42 if px == 142 else 62)
+        draw.rectangle([x + px, y + 93, x + px + pw, y + 108],
                        fill=(238, 232, 216))
-        draw.text((cx - width_of(name, fnt) // 2, py + 3), name,
-                  font=fnt, fill=(30, 28, 26))
+        draw.text((x + tx, y + 96), names[(0 if px == 13 else
+                                           1 if px == 142 else 2)],
+                  font=font(palette.SANS_BOLD, 9), fill=(30, 28, 26))
 
 
-def paint_case_map(draw, x, y, w, h, spec):
-    # Clinic interior: nurse vaccinating a seated child; US poster behind.
-    draw.rectangle([x, y, x + w, y + h], fill=(228, 224, 208))
-    draw.rectangle([x, y + int(h * 0.78), x + w, y + h], fill=(188, 178, 158))
-    # Wall poster with a recognisable US outline and one solid hotspot.
-    # Round 7: the outline is redrawn with the features that make it
-    # read as the US at card size - a Great Lakes dip on the north
-    # border, a Florida spike, a Texas bulge - and the poster's own
-    # "UNITED STATES" lettering is gone: the scene's label chip is
-    # now the single place the name is lettered (it was twice).
-    px, py = x + int(w * 0.58), y + int(h * 0.10)
-    pw, ph = int(w * 0.36), int(h * 0.52)
-    draw.rectangle([px, py, px + pw, py + ph], fill=(246, 244, 238), outline=INK)
-    us = [(0.04, 0.28), (0.18, 0.16), (0.34, 0.11), (0.52, 0.16), (0.60, 0.10),
-          (0.78, 0.08), (0.93, 0.14), (0.96, 0.24), (0.90, 0.36), (0.89, 0.46),
-          (0.93, 0.60), (0.90, 0.74), (0.84, 0.64), (0.78, 0.70), (0.66, 0.66),
-          (0.58, 0.74), (0.52, 0.86), (0.44, 0.82), (0.34, 0.84), (0.26, 0.76),
-          (0.14, 0.72), (0.07, 0.58), (0.03, 0.44)]
-    draw.polygon([(px + int(a * pw), py + int(b * ph)) for a, b in us],
-                 fill=(196, 205, 190), outline=(90, 100, 88))
-    hx, hy = px + int(pw * 0.55), py + int(ph * 0.45)
-    draw.ellipse([hx - 5, hy - 5, hx + 5, hy + 5], fill=(200, 40, 36))
-    # Nurse (teal scrubs, cap) leaning in with a syringe. Round 7:
-    # the cap is dark teal, not white - the white cap blended into
-    # the pale wall and the head disappeared; both figures' heads
-    # now carry a dark top against the ground.
-    nx = x + int(w * 0.30)
-    person(draw, nx, y + int(h * 0.18), 1.3, (232, 192, 158), (30, 105, 105),
-           (38, 140, 140), tie=(38, 140, 140))
-    draw.line([nx + 14, y + int(h * 0.52), nx + 34, y + int(h * 0.46)],
-              fill=(232, 192, 158), width=5)
-    draw.line([nx + 34, y + int(h * 0.46), nx + 42, y + int(h * 0.42)],
-              fill=(120, 120, 120), width=2)
-    # Child on a chair, sleeve up.
-    cx2 = x + int(w * 0.47)
-    draw.rectangle([cx2 - 12, y + int(h * 0.62), cx2 + 14, y + int(h * 0.80)],
-                   fill=(150, 90, 60))
-    person(draw, cx2, y + int(h * 0.34), 0.95, (198, 150, 110), (30, 26, 22),
-           (70, 110, 190), tie=(70, 110, 190))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_chart_down(draw, x, y, w, h, spec):
-    # Trading floor: a big falling board, a dashed reference line
-    # labelled with the dek's figure, traders.
-    draw.rectangle([x, y, x + w, y + h], fill=(30, 34, 44))
-    bx, by = x + int(w * 0.06), y + int(h * 0.08)
-    bw, bh = int(w * 0.88), int(h * 0.52)
-    draw.rectangle([bx, by, bx + bw, by + bh], fill=(16, 20, 28), outline=(120, 130, 140))
-    pts = [(bx + int(bw * f), by + int(bh * g)) for f, g in
-           ((0.02, 0.18), (0.20, 0.26), (0.38, 0.20), (0.55, 0.42),
-            (0.72, 0.55), (0.88, 0.78), (0.98, 0.88))]
-    draw.line(pts, fill=(240, 80, 60), width=3)
-    ref_y = by + int(bh * 0.62)
-    for sx in range(bx + 4, bx + bw - 4, 10):
-        draw.line([sx, ref_y, sx + 5, ref_y], fill=(240, 200, 80), width=2)
-    # R2: the dashed-line label reads the dek's figure, "−2.19%".
-    # The old "200-DAY" appeared nowhere in the dek.
-    fnt = ImageFont.truetype(SANS_BOLD, 8)
-    draw.text((bx + bw - width_of("\u22122.19%", fnt) - 4, ref_y - 11), "\u22122.19%",
-              font=fnt, fill=(240, 200, 80))
-    draw.polygon([(bx + bw - 8, by + int(bh * 0.88)), (bx + bw - 1, by + int(bh * 0.88)),
-                  (bx + bw - 4, by + int(bh * 0.97))], fill=(240, 80, 60))
-    # Three traders below the board; the middle one points up at it.
-    floor_y = y + int(h * 0.66)
-    for i, fx in enumerate((0.22, 0.50, 0.76)):
-        cx = x + int(w * fx)
-        person(draw, cx, floor_y, 1.05, (232, 192, 158), (36, 30, 26),
-               (52, 58, 74), tie=(170, 40, 40))
-    mid = x + int(w * 0.50)
-    draw.line([mid + 12, floor_y + 16, mid + 26, floor_y - 8], fill=(232, 192, 158), width=4)
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_chart_up(draw, x, y, w, h, spec):
-    # Listings board for the Anthropic card (round 7, original to
-    # this painter): a dark board of green candles climbing left to
-    # right under a gold trend line, the dek's +17% move lettered
-    # large inside the art so the figure survives downscaling, two
-    # traders on the floor below, and the ANT tag as the label chip.
-    draw.rectangle([x, y, x + w, y + h], fill=(26, 34, 30))
-    bx, by = x + int(w * 0.06), y + int(h * 0.10)
-    bw, bh = int(w * 0.88), int(h * 0.54)
-    draw.rectangle([bx, by, bx + bw, by + bh], fill=(14, 22, 18),
-                   outline=(110, 130, 115))
-    base = by + bh - 4
-    step = (bh - 16) / 7.0
-    for i in range(7):
-        cx0 = bx + 8 + i * ((bw - 16) // 7)
-        cw0 = max(6, (bw - 16) // 7 - 9)
-        lo = base - int(i * step)
-        hi = lo - int(step + 6)
-        draw.line([cx0 + cw0 // 2, hi - 3, cx0 + cw0 // 2, lo + 2],
-                  fill=(150, 215, 160), width=1)
-        draw.rectangle([cx0, hi, cx0 + cw0, lo], fill=(64, 178, 96))
-    draw.line([bx + 6, base - 2, bx + bw - 6, by + 6], fill=(244, 196, 84),
-              width=2)
-    # R2: the large gold figure is the dek's "+17%". The old "$83"
-    # offer price appeared nowhere in the dek.
-    pfnt = ImageFont.truetype(SANS_BOLD, 15)
-    draw.text((bx + bw // 2 - width_of("+17%", pfnt) // 2, by + 2), "+17%",
-              font=pfnt, fill=(244, 196, 84))
-    floor_y = y + int(h * 0.72)
-    for fx in (0.30, 0.62):
-        person(draw, x + int(w * fx), floor_y - 6, 0.95, (232, 192, 158),
-               (36, 30, 26), (44, 54, 66), tie=(64, 178, 96))
-    draw.rectangle([x, floor_y + 18, x + w, y + h], fill=(20, 26, 22))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_chip(draw, x, y, w, h, spec):
-    # Clean-room fab: dark room, glowing wafer, worker in a bunny suit.
-    draw.rectangle([x, y, x + w, y + h], fill=(36, 44, 56))
-    for gx in range(x + 8, x + w, 26):
-        draw.line([gx, y + 4, gx, y + int(h * 0.30)], fill=(70, 84, 100), width=2)
-    # Glowing wafer on its pedestal, left.
-    wx, wy = x + int(w * 0.28), y + int(h * 0.52)
-    draw.ellipse([wx - 26, wy - 26, wx + 26, wy + 26], fill=(90, 220, 230))
-    draw.ellipse([wx - 18, wy - 18, wx + 18, wy + 18], fill=(160, 245, 250))
-    for r in (6, 12):
-        draw.ellipse([wx - r, wy - r, wx + r, wy + r], outline=(60, 160, 175))
-    draw.rectangle([wx - 4, wy + 26, wx + 4, y + h - 8], fill=(110, 120, 130))
-    # Bunny-suited worker beside it, visor and white suit.
-    cx = x + int(w * 0.66)
-    top = y + int(h * 0.16)
-    draw.ellipse([cx - 11, top, cx + 11, top + 22], fill=(238, 240, 242))
-    draw.rectangle([cx - 8, top + 7, cx + 8, top + 13], fill=(70, 90, 110))
-    draw.rectangle([cx - 14, top + 22, cx + 14, y + h - 6], fill=(232, 234, 236))
-    draw.line([cx - 14, top + 34, wx + 24, wy - 6], fill=(232, 234, 236), width=6)
-    # A second lit panel on the right wall.
-    draw.rectangle([x + int(w * 0.86), y + int(h * 0.20), x + int(w * 0.96),
-                    y + int(h * 0.55)], fill=(52, 66, 84), outline=(120, 140, 150))
-    rng = Lcg(9)
-    for _ in range(6):
-        dx = x + int(w * 0.86) + 3 + rng.below(int(w * 0.08))
-        dy = y + int(h * 0.20) + 3 + rng.below(int(h * 0.30))
-        draw.rectangle([dx, dy, dx + 2, dy + 2], fill=(120, 230, 200))
-    # R3: the day's move lettered in the art itself is drawn only
-    # when the spec carries a figure. The old hard-coded "-4%"
-    # belonged to a different story and would be an unanchored
-    # figure on any other chip story (Nvidia carries no figure).
-    if spec.get("figure"):
-        dfnt = ImageFont.truetype(SANS_BOLD, 14)
-        draw.text((x + int(w * 0.80), y + 5), spec["figure"], font=dfnt,
-                  fill=(255, 96, 72))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_missiles(draw, x, y, w, h, spec):
-    # Night sky over a skyline: incoming drone trails are BROKEN by
-    # interception bursts high above the rooftops - nothing reaches
-    # the city, matching the "repel" headline.
-    draw.rectangle([x, y, x + w, y + h], fill=(26, 30, 48))
-    rng = Lcg(17)
-    for _ in range(16):
-        sx = x + 3 + rng.below(w - 6)
-        sy = y + 3 + rng.below(int(h * 0.5))
-        draw.rectangle([sx, sy, sx + 1, sy + 1], fill=(200, 205, 220))
-    # City skyline along the bottom, windows lit, rooftops intact.
-    ground_y = y + h
-    rng2 = Lcg(29)
-    bx = x + 2
-    while bx < x + w - 14:
-        bw = 14 + rng2.below(12)
-        bh = int(h * (0.16 + 0.10 * (rng2.below(10) / 10.0)))
-        draw.rectangle([bx, ground_y - bh, bx + bw, ground_y], fill=(16, 18, 26))
-        for _ in range(3):
-            wx = bx + 2 + rng2.below(max(2, bw - 5))
-            wy = ground_y - bh + 3 + rng2.below(max(2, bh - 6))
-            draw.rectangle([wx, wy, wx + 2, wy + 2], fill=(240, 200, 110))
-        bx += bw + 3
-    sky_y = y + int(h * 0.52)  # nothing hostile crosses this line
-    # Three incoming trails from the top corners, each ending mid-sky
-    # in an interception burst, with short debris segments falling
-    # away below the burst - and stopping there.
-    incomings = [(0.06, 0.30, 0.34), (0.42, 0.62, 0.26), (0.94, 0.72, 0.40)]
-    for fx0, fx1, fy1 in incomings:
-        x0, y0 = x + int(w * fx0), y + 2
-        x1, y1 = x + int(w * fx1), y + int(h * fy1)
-        steps = 14
-        for t in range(steps):  # broken trail: draw only even segments
-            if t % 2 == 1:
-                continue
-            f0, f1 = t / steps, (t + 1) / steps
-            draw.line([x0 + (x1 - x0) * f0, y0 + (y1 - y0) * f0,
-                       x0 + (x1 - x0) * f1, y0 + (y1 - y0) * f1],
-                      fill=(250, 170, 90), width=2)
-        # A rising interceptor streak from the skyline to the same point.
-        ix0 = x1 - int(w * 0.10)
-        draw.line([ix0, sky_y + int(h * 0.18), x1, y1], fill=(170, 220, 250), width=2)
-        # The interception burst itself, well above the rooftops.
-        star_burst(draw, x1, y1, max(8, h // 9), (255, 190, 80),
-                   seed=int(fx1 * 100) + 5)
-        draw.ellipse([x1 - 3, y1 - 3, x1 + 3, y1 + 3], fill=(255, 240, 200))
-        # Debris: two short segments tumbling below the burst, fading
-        # out long before the skyline.
-        for dx, dy, ln in ((-8, 10, 5), (6, 14, 4)):
-            draw.line([x1 + dx, y1 + dy, x1 + dx + ln, y1 + dy + 3],
-                      fill=(200, 150, 110), width=2)
-
-
-def paint_probe(draw, x, y, w, h, spec):
-    draw.rectangle([x, y, x + w, y + h], fill=(14, 16, 30))
-    rng = Lcg(31)
-    for _ in range(30):
-        sx = x + 2 + rng.below(w - 4)
-        sy = y + 2 + rng.below(h - 4)
-        s = 1 + rng.below(2)
-        draw.rectangle([sx, sy, sx + s, sy + s], fill=(215, 220, 235))
-    # Earth, a small blue marble far right.
-    ex, ey = x + int(w * 0.86), y + int(h * 0.30)
-    draw.ellipse([ex - 10, ey - 10, ex + 10, ey + 10], fill=(70, 130, 220))
-    draw.ellipse([ex - 4, ey - 6, ex + 3, ey - 1], fill=(90, 190, 110))
-    # The probe: big dish, bus, long booms.
-    cx, cy = x + int(w * 0.42), y + int(h * 0.48)
-    draw.arc([cx - 30, cy - 26, cx + 6, cy + 26], 270, 90, fill=(225, 228, 232), width=4)
-    draw.ellipse([cx - 30, cy - 26, cx + 6, cy + 26], outline=(150, 155, 165))
-    draw.rectangle([cx - 2, cy - 8, cx + 16, cy + 8], fill=(190, 160, 90))
-    draw.line([cx + 8, cy, cx + 44, cy - 20], fill=(200, 205, 210), width=2)
-    draw.line([cx + 8, cy, cx + 48, cy + 12], fill=(200, 205, 210), width=2)
-    draw.ellipse([cx + 42, cy - 23, cx + 48, cy - 17], fill=(230, 232, 235))
-    draw.line([cx - 12, cy, cx - 30, cy], fill=(230, 232, 235), width=2)
-    # Signal arcs travelling toward Earth.
-    for r in (12, 20, 28):
-        draw.arc([ex - 16 - r, ey - r, ex - 16 + r, ey + r], 300, 60,
-                 fill=(140, 200, 250), width=2)
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="bl")
-
-
-def paint_ballot(draw, x, y, w, h, spec):
-    # Parliament chamber: tiered seat rows, raised hands, a rostrum.
-    draw.rectangle([x, y, x + w, y + h], fill=(96, 74, 54))
-    draw.rectangle([x, y, x + w, y + int(h * 0.30)], fill=(120, 94, 66))
-    # Rostrum, centre front.
-    rx = x + w // 2
-    draw.rectangle([rx - 16, y + int(h * 0.30), rx + 16, y + int(h * 0.52)],
-                   fill=(70, 50, 34))
-    person(draw, rx, y + int(h * 0.10), 0.9, (232, 192, 158), (40, 36, 32),
-           (34, 38, 60), tie=(160, 36, 36))
-    # Three rows of seats with heads; many arms raised.
-    rng = Lcg(53)
-    for row, fy in enumerate((0.58, 0.72, 0.86)):
-        ry = y + int(h * fy)
-        draw.rectangle([x + 6, ry + 8, x + w - 6, ry + 13], fill=(70, 50, 34))
-        for i in range(9):
-            hx = x + int(w * (0.08 + 0.105 * i))
-            draw.ellipse([hx - 4, ry - 4, hx + 4, ry + 4], fill=(222, 182, 148))
-            if rng.below(10) < 6:
-                draw.line([hx + 5, ry + 6, hx + 10, ry - 8], fill=(222, 182, 148), width=3)
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
-
-
-def paint_scales(draw, x, y, w, h, spec):
-    # Courtroom: panelled wall, three judges on a high bench, and a small
-    # scales-of-justice standing on the bench front.
-    draw.rectangle([x, y, x + w, y + h], fill=(104, 82, 58))
-    for px in range(x + 10, x + w - 10, 34):
-        draw.rectangle([px, y + 8, px + 26, y + int(h * 0.44)], outline=(70, 54, 36), width=2)
-    bench_y = y + int(h * 0.52)
-    for fx in (0.26, 0.50, 0.74):
-        cx = x + int(w * fx)
-        person(draw, cx, y + int(h * 0.20), 1.15, (230, 190, 155), (210, 210, 210),
-               (26, 26, 30), tie=(240, 240, 240))
-    draw.rectangle([x + 4, bench_y, x + w - 4, y + h - 4], fill=(74, 54, 36))
-    draw.rectangle([x + 4, bench_y, x + w - 4, bench_y + 4], fill=(96, 72, 46))
-    # Scales: post, beam, two hanging pans, centred on the bench front.
-    cx = x + w // 2
-    top = bench_y + 12
-    draw.line([cx, top, cx, top + 22], fill=(232, 196, 90), width=3)
-    draw.line([cx - 20, top + 3, cx + 20, top + 3], fill=(232, 196, 90), width=3)
-    for px in (cx - 20, cx + 20):
-        draw.line([px, top + 3, px - 6, top + 16], fill=(232, 196, 90), width=1)
-        draw.line([px, top + 3, px + 6, top + 16], fill=(232, 196, 90), width=1)
-        draw.arc([px - 8, top + 12, px + 8, top + 22], 0, 180, fill=(232, 196, 90), width=2)
-    draw.rectangle([cx - 7, top + 22, cx + 7, top + 25], fill=(232, 196, 90))
-
-
-def paint_tents(draw, x, y, w, h, spec):
-    # A flooded camp: grey sky, a row of tents on a ground line, puddles.
-    draw.rectangle([x, y, x + w, y + h], fill=(150, 158, 164))
-    rng = Lcg(67)
-    for _ in range(22):
-        rx = x + rng.below(w)
-        ry = y + rng.below(int(h * 0.5))
-        draw.line([rx, ry, rx - 2, ry + 7], fill=(110, 122, 132), width=1)
-    ground_y = y + int(h * 0.80)
-    draw.rectangle([x, ground_y, x + w, y + h], fill=(96, 92, 80))
-    tones = [(196, 188, 168), (172, 164, 148), (206, 198, 178), (160, 152, 136),
-             (188, 180, 160)]
-    n = 5
-    tw = w // n
-    for i in range(n):
-        tx = x + i * tw + 4
-        apex = ground_y - int(h * 0.42)
-        draw.polygon([(tx, ground_y), (tx + tw // 2, apex), (tx + tw - 8, ground_y)],
-                     fill=tones[i], outline=(90, 86, 76))
-        draw.polygon([(tx + tw // 2 - 6, ground_y), (tx + tw // 2, apex + 12),
-                      (tx + tw // 2 + 6, ground_y)], fill=(70, 66, 58))
-    # Flood puddles in front of the tents.
-    for i in range(4):
-        px = x + int(w * (0.10 + 0.24 * i))
-        draw.ellipse([px, ground_y + 5, px + 30, ground_y + 11], fill=(140, 165, 180))
-
-
-def paint_conference(draw, x, y, w, h, spec):
-    # Climate-conference chamber: panelled wall, a backdrop banner,
-    # five delegates seated at one long table with small flags.
-    # R3: banner and placard come from the spec (COP31 / "144→80"
-    # by default) so the same chamber serves another forum (SCO).
-    banner = spec.get("banner", "COP31")
-    placard = spec.get("placard", "144\u219280")
-    draw.rectangle([x, y, x + w, y + h], fill=(208, 202, 188))
-    draw.rectangle([x + int(w * 0.30), y + int(h * 0.08), x + int(w * 0.70),
-                    y + int(h * 0.34)], fill=(70, 96, 84))
-    fnt = ImageFont.truetype(SANS_BOLD, 11)
-    draw.text((x + w // 2 - width_of(banner, fnt) // 2, y + int(h * 0.16)),
-              banner, font=fnt, fill=(240, 238, 228))
-    table_y = y + int(h * 0.68)
-    skin = (232, 192, 158)
-    suits = [(52, 58, 74), (84, 60, 52), (44, 66, 58), (66, 52, 76), (58, 62, 50)]
-    hair = [(30, 28, 26), (120, 90, 60), (18, 18, 18), (200, 200, 200), (60, 44, 30)]
-    for i, fx in enumerate((0.14, 0.32, 0.50, 0.68, 0.86)):
-        cx = x + int(w * fx)
-        person(draw, cx, y + int(h * 0.36), 1.05, skin, hair[i], suits[i],
-               tie=(240, 238, 230))
-        # A small table flag in front of each delegate.
-        draw.line([cx + 10, table_y, cx + 10, table_y - 12], fill=(60, 58, 54), width=1)
-        draw.rectangle([cx + 10, table_y - 12, cx + 18, table_y - 7],
-                       fill=(168, 60, 50) if i % 2 == 0 else (60, 90, 150))
-    draw.rectangle([x + int(w * 0.03), table_y, x + int(w * 0.97), y + h - 3],
-                   fill=(110, 84, 56))
-    draw.rectangle([x + int(w * 0.03), table_y, x + int(w * 0.97), table_y + 4],
-                   fill=(146, 112, 72))
-    # R2: the placard carries "144→80" - the draft-cut figure the
-    # dek already states. The old "35%" appeared nowhere on the
-    # page and was an unanchored figure. R3: the placard text is
-    # spec-driven; other forums pass their own label ("SCO").
-    pfnt = ImageFont.truetype(SANS_BOLD, 12)
-    ptw = width_of(placard, pfnt)
-    pcx = x + w // 2
-    draw.rectangle([pcx - ptw // 2 - 6, table_y + 6, pcx + ptw // 2 + 6,
-                    table_y + 23], fill=(24, 30, 46))
-    draw.text((pcx - ptw // 2, table_y + 9), placard, font=pfnt,
-              fill=(244, 196, 84))
-
-
-def paint_gta_skyline(draw, x, y, w, h, spec):
-    # Muted dusk over a coastal game city: dusty purple-to-apricot sky,
-    # a low sun, dark skyline silhouettes, palms, lit windows, water.
-    # Saturation deliberately kept low - dusk, never neon.
-    draw.rectangle([x, y, x + w, y + int(h * 0.30)], fill=(94, 82, 108))
-    draw.rectangle([x, y + int(h * 0.30), x + w, y + int(h * 0.55)], fill=(146, 104, 102))
-    draw.rectangle([x, y + int(h * 0.55), x + w, y + int(h * 0.78)], fill=(198, 132, 84))
-    sea_y = y + int(h * 0.78)
-    draw.rectangle([x, sea_y, x + w, y + h], fill=(56, 58, 88))
-    sun_r = max(7, h // 7)
-    sun_cx, sun_cy = x + int(w * 0.34), sea_y - 2
-    draw.ellipse([sun_cx - sun_r, sun_cy - sun_r, sun_cx + sun_r, sun_cy + sun_r],
-                 fill=(236, 186, 116))
-    draw.rectangle([x, sea_y - 2, x + w, sea_y], fill=(120, 84, 84))
-    # Skyline: two dark rows of towers with sparse amber windows.
-    rng = Lcg(97)
-    for base_f, tone, hmin, hmax in ((0.78, (70, 62, 84), 0.18, 0.38),
-                                     (0.80, (40, 38, 52), 0.28, 0.58)):
-        bx = x + 1
-        base = y + int(h * base_f)
-        while bx < x + w - 10:
-            bw = 9 + rng.below(10)
-            bh = int(h * (hmin + (hmax - hmin) * (rng.below(10) / 10.0)))
-            draw.rectangle([bx, base - bh, bx + bw, base], fill=tone)
-            for _ in range(3):
-                if rng.below(10) < 5:
-                    wx = bx + 2 + rng.below(max(2, bw - 4))
-                    wy = base - bh + 3 + rng.below(max(2, bh - 6))
-                    draw.rectangle([wx, wy, wx + 2, wy + 2], fill=(238, 198, 120))
-            bx += bw + 2 + rng.below(4)
-    # Palm silhouettes in the foreground.
-    for fx in (0.08, 0.90):
-        px, py = x + int(w * fx), y + h
-        draw.line([px, py, px + 3, py - int(h * 0.34)], fill=(24, 24, 30), width=3)
-        for ang in (160, 200, 250, 300, 345):
-            ex = px + 3 + int(13 * math.cos(math.radians(ang)))
-            ey = py - int(h * 0.34) + int(8 * math.sin(math.radians(ang)))
-            draw.line([px + 3, py - int(h * 0.34), ex, ey], fill=(24, 24, 30), width=2)
-    # Sun glitter on the water.
-    for i in range(5):
-        gy = sea_y + 3 + i * 3
-        gw = 16 - 2 * i
-        draw.line([sun_cx - gw // 2, gy, sun_cx + gw // 2, gy],
-                  fill=(214, 160, 96), width=1)
-    # R2: a palm-lined street with a car along the bottom, plus a
-    # small muted sign on a front-building block, so the frame reads
-    # as a game-city street, not a generic skyline. Muted dusk
-    # palette kept - the sign is dusty rose, never saturated neon.
-    sgx, sgy = x + int(w * 0.66), y + int(h * 0.40)
-    draw.rectangle([sgx, sgy, sgx + 30, sgy + 18], fill=(40, 38, 52))
-    draw.rectangle([sgx + 3, sgy + 3, sgx + 27, sgy + 13], fill=(168, 96, 110))
-    sfnt = ImageFont.truetype(SANS_BOLD, 7)
-    draw.text((sgx + 5, sgy + 4), "VICE", font=sfnt, fill=(30, 22, 26))
-    road_y = y + int(h * 0.86)
-    draw.rectangle([x, road_y, x + w, y + h], fill=(30, 30, 36))
-    for dx in range(x + 6, x + w - 6, 18):
-        draw.line([dx, road_y + 7, dx + 8, road_y + 7], fill=(200, 190, 160), width=1)
-    # Small palms along the street.
-    for fx in (0.24, 0.62):
-        px, py = x + int(w * fx), y + h
-        draw.line([px, py, px + 2, py - 12], fill=(22, 22, 28), width=2)
-        for ang in (170, 210, 250, 300, 340):
-            ex = px + 2 + int(7 * math.cos(math.radians(ang)))
-            ey = py - 12 + int(5 * math.sin(math.radians(ang)))
-            draw.line([px + 2, py - 12, ex, ey], fill=(22, 22, 28), width=1)
-    # Car silhouette, side-on, headlight on, mid-street.
-    car_x, car_y = x + int(w * 0.38), road_y + 2
-    draw.rectangle([car_x, car_y, car_x + 34, car_y + 7], fill=(18, 18, 24))
-    draw.polygon([(car_x + 7, car_y), (car_x + 11, car_y - 5),
-                  (car_x + 23, car_y - 5), (car_x + 27, car_y)],
-                 fill=(18, 18, 24))
-    draw.ellipse([car_x + 5, car_y + 6, car_x + 10, car_y + 11], fill=(10, 10, 12))
-    draw.ellipse([car_x + 24, car_y + 6, car_x + 29, car_y + 11], fill=(10, 10, 12))
-    draw.ellipse([car_x + 1, car_y + 2, car_x + 4, car_y + 5], fill=(200, 60, 50))
-    draw.ellipse([car_x + 33, car_y + 2, car_x + 36, car_y + 5],
-                 fill=(252, 232, 170))
-    draw.line([car_x + 36, car_y + 3, car_x + 52, car_y + 3],
-              fill=(240, 214, 150), width=1)
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_tower_strike(draw, x, y, w, h, spec):
-    # Night over Riyadh: one tall glass tower, its crown floors
-    # scorched and smoking, a small flame at the damage band, the
-    # city a low dark base below. The tower is the whole subject.
-    draw.rectangle([x, y, x + w, y + h], fill=(24, 28, 48))
-    rng = Lcg(41)
-    for _ in range(12):
-        sx = x + 3 + rng.below(w - 6)
-        sy = y + 3 + rng.below(int(h * 0.4))
-        draw.rectangle([sx, sy, sx + 1, sy + 1], fill=(200, 205, 220))
-    # Low city base.
-    base_y = y + int(h * 0.86)
-    draw.rectangle([x, base_y, x + w, y + h], fill=(14, 16, 26))
-    for bx in range(x + 4, x + w - 10, 18):
-        bh = 8 + rng.below(10)
-        draw.rectangle([bx, base_y - bh, bx + 12, base_y], fill=(30, 32, 44))
-    # The tower: tapered glass shaft, lit windows, damaged crown.
-    tx0 = x + int(w * 0.38)
-    tx1 = x + int(w * 0.62)
-    top_y = y + int(h * 0.08)
-    draw.polygon([(tx0, base_y), (tx0 + 4, top_y), (tx1 - 4, top_y),
-                  (tx1, base_y)], fill=(52, 84, 120))
-    draw.polygon([(tx0 + 4, top_y), (tx1 - 4, top_y), (tx1 - 8, top_y + 10),
-                  (tx0 + 8, top_y + 10)], fill=(70, 104, 140))
-    for wy in range(top_y + 16, base_y - 6, 9):
-        for wx in range(tx0 + 4, tx1 - 6, 8):
-            draw.rectangle([wx, wy, wx + 3, wy + 4], fill=(240, 200, 110))
-    # Damage band: dark scorched floors near the crown, one flame.
-    dmg_y = top_y + int(h * 0.16)
-    draw.rectangle([tx0 + 2, dmg_y, tx1 - 2, dmg_y + 12], fill=(20, 18, 16))
-    flame(draw, x + int(w * 0.50), dmg_y + 12, 5)
-    smoke_up(draw, x + int(w * 0.56), dmg_y + 2, 4)
-    # R2: chip moves to the top-right sky - the hero number badge
-    # sits at the top-left corner and used to cover the "PI" of
-    # this chip, so it read "3 F TOWER".
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
-
-
-def paint_cricket(draw, x, y, w, h, spec):
-    # Green outfield, pale pitch strip, a batsman mid-drive, stumps
-    # behind him and a fielder at the boundary. One actor, one action.
-    draw.rectangle([x, y, x + w, y + h], fill=(74, 140, 74))
-    draw.rectangle([x, y, x + w, y + int(h * 0.30)], fill=(120, 170, 120))
-    px0, px1 = x + int(w * 0.34), x + int(w * 0.66)
-    draw.rectangle([px0, y + int(h * 0.30), px1, y + h], fill=(214, 196, 150))
-    # Stumps at the batsman's end.
-    sx = x + int(w * 0.50)
-    sy = y + int(h * 0.82)
-    for dx in (-5, 0, 5):
-        draw.rectangle([sx + dx - 1, sy - 16, sx + dx + 1, sy], fill=(240, 220, 140))
-    draw.rectangle([sx - 6, sy - 18, sx + 6, sy - 16], fill=(240, 220, 140))
-    # Batsman: white kit, dark helmet, bat swung low through the ball.
-    # R2: enlarged (scale 1.15 -> 1.45) so he reads at 480 px.
-    bx = x + int(w * 0.44)
-    person(draw, bx, y + int(h * 0.42), 1.45, (198, 150, 110), (28, 28, 30),
-           (238, 238, 234), tie=(238, 238, 234))
-    draw.line([bx + 14, y + int(h * 0.65), bx + 32, y + int(h * 0.86)],
-              fill=(232, 192, 158), width=4)
-    draw.line([bx + 30, y + int(h * 0.84), bx + 44, y + int(h * 0.95)],
-              fill=(190, 160, 110), width=5)
-    draw.ellipse([bx + 44, y + int(h * 0.93) - 3, bx + 50, y + int(h * 0.93) + 3],
-                 fill=(200, 40, 36))
-    # R2: boundary rope - shallow arcs in the outfield either side
-    # of the pitch, curving down to the frame's bottom corners.
-    rope = [(px0, y + int(h * 0.88)), (px0 - 12, y + int(h * 0.90)),
-            (x + int(w * 0.20), y + int(h * 0.93)),
-            (x + int(w * 0.08), y + int(h * 0.96)), (x + 2, y + int(h * 0.97))]
-    draw.line(rope, fill=(240, 240, 230), width=2)
-    rope2 = [(px1, y + int(h * 0.88)), (px1 + 12, y + int(h * 0.90)),
-             (x + int(w * 0.80), y + int(h * 0.93)),
-             (x + int(w * 0.92), y + int(h * 0.96)), (x + w - 2, y + int(h * 0.97))]
-    draw.line(rope2, fill=(240, 240, 230), width=2)
-    # R2: scoreboard chip top-right - "146*" is the headline's
-    # figure (Nicholls 146*), so the chip is anchored to print.
-    label_chip(draw, x, y, w, h, "146*", size=11, align="tr")
-    # Fielder at the boundary, arms ready.
-    fx = x + int(w * 0.86)
-    person(draw, fx, y + int(h * 0.58), 0.95, (232, 192, 158), (30, 26, 22),
-           (30, 90, 160), tie=(30, 90, 160))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_football(draw, x, y, w, h, spec):
-    # Green pitch, white lines, a goal at the back, a striker
-    # shooting and a keeper diving. The ball is mid-flight.
-    draw.rectangle([x, y, x + w, y + h], fill=(64, 132, 64))
-    draw.rectangle([x, y + int(h * 0.62), x + w, y + h], fill=(56, 118, 56))
-    draw.line([x, y + int(h * 0.62), x + w, y + int(h * 0.62)],
-              fill=(240, 240, 240), width=2)
-    draw.ellipse([x + int(w * 0.38), y + int(h * 0.68), x + int(w * 0.62),
-                  y + int(h * 0.94)], outline=(240, 240, 240), width=2)
-    # Goal, back centre.
-    gx0, gx1 = x + int(w * 0.34), x + int(w * 0.66)
-    gy0, gy1 = y + int(h * 0.18), y + int(h * 0.46)
-    draw.rectangle([gx0, gy0, gx1, gy1], outline=(240, 240, 240), width=3)
-    for lx in range(gx0 + 6, gx1, 10):
-        draw.line([lx, gy0, lx, gy1], fill=(220, 220, 220), width=1)
-    for ly in range(gy0 + 6, gy1, 8):
-        draw.line([gx0, ly, gx1, ly], fill=(220, 220, 220), width=1)
-    # Keeper diving left inside the goal.
-    kx = x + int(w * 0.42)
-    draw.ellipse([kx - 7, gy1 - 14, kx + 7, gy1], fill=(240, 200, 60))
-    draw.rectangle([kx - 16, gy1 - 10, kx + 2, gy1 + 2], fill=(240, 200, 60))
-    draw.rectangle([kx + 2, gy1 - 6, kx + 16, gy1 + 4], fill=(30, 30, 34))
-    # Striker, red shirt, follow-through; ball between boot and goal.
-    sx = x + int(w * 0.72)
-    person(draw, sx, y + int(h * 0.52), 1.1, (198, 150, 110), (20, 18, 16),
-           (178, 40, 40), tie=(178, 40, 40))
-    draw.line([sx + 10, y + int(h * 0.72), sx + 24, y + int(h * 0.80)],
-              fill=(198, 150, 110), width=4)
-    bx, by = x + int(w * 0.58), y + int(h * 0.44)
-    draw.ellipse([bx - 5, by - 5, bx + 5, by + 5], fill=(245, 245, 245),
-                 outline=(30, 30, 30))
-    draw.ellipse([bx - 2, by - 2, bx + 2, by + 2], fill=(30, 30, 30))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_hippo(draw, x, y, w, h, spec):
-    # A zoo pool: blue water, a big grey hippo half-submerged with
-    # ears, eyes and broad snout above the line, and a small red
-    # woolly hat floating beside it.
-    draw.rectangle([x, y, x + w, y + h], fill=(150, 190, 205))
-    draw.rectangle([x, y, x + w, y + int(h * 0.22)], fill=(196, 214, 190))
-    # Bank and fence at the back.
-    draw.rectangle([x, y + int(h * 0.22), x + w, y + int(h * 0.30)],
-                   fill=(120, 130, 110))
-    for fx in range(x + 8, x + w - 4, 22):
-        draw.line([fx, y + int(h * 0.10), fx, y + int(h * 0.30)],
-                  fill=(70, 70, 66), width=2)
-    water_y = y + int(h * 0.30)
-    draw.rectangle([x, water_y, x + w, y + h], fill=(72, 130, 168))
-    # Hippo body: broad back breaking the surface, head left.
-    cx, cy = x + int(w * 0.46), y + int(h * 0.62)
-    draw.ellipse([cx - 52, cy - 22, cx + 52, cy + 26], fill=(140, 132, 128))
-    draw.ellipse([cx - 66, cy - 12, cx - 8, cy + 22], fill=(150, 142, 138))
-    # Ears and eyes above the waterline.
-    for ex in (cx - 58, cx - 38):
-        draw.ellipse([ex - 5, cy - 20, ex + 5, cy - 10], fill=(140, 132, 128),
-                     outline=(90, 84, 80))
-    for ex in (cx - 56, cx - 40):
-        draw.ellipse([ex - 3, cy - 8, ex + 3, cy - 2], fill=(24, 22, 20))
-    # Broad snout with two nostrils, half-submerged.
-    draw.ellipse([cx - 72, cy + 2, cx - 34, cy + 20], fill=(160, 152, 148))
-    draw.ellipse([cx - 64, cy + 6, cx - 58, cy + 12], fill=(40, 36, 32))
-    draw.ellipse([cx - 48, cy + 6, cx - 42, cy + 12], fill=(40, 36, 32))
-    # Ripple arcs around the body.
-    for r in (58, 68):
-        draw.arc([cx - r, cy - 6, cx + r, cy + 30], 0, 180,
-                 fill=(200, 225, 235), width=2)
-    # The small red woolly hat, floating right of the hippo.
-    hx, hy = x + int(w * 0.80), y + int(h * 0.72)
-    draw.polygon([(hx - 12, hy), (hx - 8, hy - 10), (hx + 8, hy - 10),
-                  (hx + 12, hy)], fill=(178, 40, 40))
-    draw.rectangle([hx - 12, hy, hx + 12, hy + 4], fill=(140, 28, 28))
-    draw.ellipse([hx - 3, hy - 14, hx + 3, hy - 8], fill=(240, 240, 240))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
-
-
-def paint_drought(draw, x, y, w, h, spec):
-    # Harsh pale sun over cracked dry earth, one withered tree and
-    # a single empty water drum. No water anywhere in the frame.
-    draw.rectangle([x, y, x + w, y + h], fill=(232, 214, 170))
-    sun_cx, sun_cy = x + int(w * 0.76), y + int(h * 0.22)
-    star_burst(draw, sun_cx, sun_cy, max(10, h // 7), (244, 196, 84), seed=5)
-    draw.ellipse([sun_cx - 8, sun_cy - 8, sun_cx + 8, sun_cy + 8],
-                 fill=(250, 220, 120))
-    # Cracked earth: pale ground with dark branching cracks.
-    ground_y = y + int(h * 0.42)
-    draw.rectangle([x, ground_y, x + w, y + h], fill=(196, 158, 104))
-    rng = Lcg(61)
-    for _ in range(9):
-        cx = x + 6 + rng.below(w - 12)
-        cy = ground_y + 6 + rng.below(int(h * 0.45))
-        draw.line([cx, cy, cx + 14 - rng.below(28), cy + 8 + rng.below(8)],
-                  fill=(120, 88, 56), width=2)
-        draw.line([cx, cy, cx - 10 + rng.below(20), cy - 6 - rng.below(6)],
-                  fill=(120, 88, 56), width=2)
-    # Withered tree, left: bare trunk and three bare branches.
-    tx = x + int(w * 0.22)
-    draw.line([tx, y + h - 4, tx + 2, ground_y + 14], fill=(96, 70, 44), width=6)
-    for dx, dy in ((-22, -26), (0, -34), (24, -24)):
-        draw.line([tx + 1, ground_y + 16, tx + dx, ground_y + 16 + dy],
-                  fill=(96, 70, 44), width=3)
-    # Empty water drum on its side, right.
-    dx0 = x + int(w * 0.68)
-    dy0 = y + int(h * 0.78)
-    draw.ellipse([dx0, dy0, dx0 + 26, dy0 + 16], fill=(90, 110, 130))
-    draw.rectangle([dx0 - 26, dy0 + 2, dx0 + 2, dy0 + 14], fill=(110, 130, 150))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_factory(draw, x, y, w, h, spec):
-    # A factory at shift change: sawtooth roof, two chimneys with
-    # thin smoke, a worker with a toolbox walking out of the gate.
-    draw.rectangle([x, y, x + w, y + h], fill=(168, 178, 186))
-    draw.rectangle([x, y, x + w, y + int(h * 0.34)], fill=(140, 152, 164))
-    ground_y = y + int(h * 0.82)
-    draw.rectangle([x, ground_y, x + w, y + h], fill=(110, 106, 98))
-    # Chimneys with thin vertical smoke.
-    for cx in (x + int(w * 0.16), x + int(w * 0.30)):
-        draw.rectangle([cx, y + int(h * 0.10), cx + 10, ground_y],
-                       fill=(120, 60, 50))
-        smoke_up(draw, cx + 5, y + int(h * 0.10), 3)
-    # Sawtooth factory block with lit windows and a gate.
-    fx0, fx1 = x + int(w * 0.10), x + int(w * 0.92)
-    fy0 = y + int(h * 0.42)
-    draw.rectangle([fx0, fy0, fx1, ground_y], fill=(96, 104, 116))
-    for i in range(4):
-        sx = fx0 + i * ((fx1 - fx0) // 4)
-        draw.polygon([(sx, fy0), (sx + (fx1 - fx0) // 8, fy0 - 14),
-                      (sx + (fx1 - fx0) // 4, fy0)], fill=(80, 88, 100))
-    for wx in range(fx0 + 8, fx1 - 12, 20):
-        draw.rectangle([wx, fy0 + 12, wx + 12, fy0 + 24], fill=(240, 200, 110))
-    draw.rectangle([x + int(w * 0.44), fy0 + 30, x + int(w * 0.56), ground_y],
-                   fill=(40, 42, 48))
-    # Worker with a toolbox walking out, right of the gate.
-    wx = x + int(w * 0.70)
-    person(draw, wx, ground_y - 34, 0.95, (198, 150, 110), (30, 26, 22),
-           (52, 84, 130), tie=(52, 84, 130))
-    draw.rectangle([wx + 14, ground_y - 8, wx + 26, ground_y - 1],
-                   fill=(140, 90, 40))
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_stumps(draw, x, y, w, h, spec):
-    # A wicket falls: three stumps fill the frame, the middle stump
-    # leaning, bails flying, the red ball just past them, and a
-    # bowler celebrating with both arms raised behind. No batsman -
-    # this is the bowler's moment, distinct from the batting scene.
-    draw.rectangle([x, y, x + w, y + h], fill=(74, 140, 74))
-    draw.rectangle([x, y, x + w, y + int(h * 0.30)], fill=(120, 170, 120))
-    px0, px1 = x + int(w * 0.30), x + int(w * 0.70)
-    draw.rectangle([px0, y + int(h * 0.30), px1, y + h], fill=(214, 196, 150))
-    # Bowler celebrating behind the stumps, arms raised.
-    bx = x + int(w * 0.50)
-    person(draw, bx, y + int(h * 0.18), 1.0, (150, 110, 80), (20, 18, 16),
-           (30, 110, 60), tie=(30, 110, 60))
-    draw.line([bx - 12, y + int(h * 0.30), bx - 24, y + int(h * 0.12)],
-              fill=(150, 110, 80), width=4)
-    draw.line([bx + 12, y + int(h * 0.30), bx + 24, y + int(h * 0.12)],
-              fill=(150, 110, 80), width=4)
-    # Three stumps, large in the foreground; the middle one leans
-    # where the ball struck it.
-    sy = y + int(h * 0.88)
-    sx = x + int(w * 0.50)
-    for dx, lean in ((-9, 0), (0, 8), (9, 0)):
-        draw.polygon([(sx + dx - 2, sy - 34), (sx + dx + 2 + lean, sy - 34),
-                      (sx + dx + 2, sy), (sx + dx - 2, sy)],
-                     fill=(240, 220, 140))
-    # Bails flying off the top, one each side.
-    draw.rectangle([sx - 16, sy - 46, sx - 8, sy - 42], fill=(240, 220, 140))
-    draw.rectangle([sx + 10, sy - 52, sx + 18, sy - 48], fill=(240, 220, 140))
-    # The red ball, just past the stumps at the crease.
-    draw.ellipse([sx + 16, sy - 10, sx + 24, sy - 2], fill=(200, 40, 36))
-    draw.arc([sx + 14, sy - 12, sx + 26, sy], 0, 180, fill=(240, 240, 240), width=1)
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
-
-
-def paint_cop31_plenary(draw, x, y, w, h, spec):
-    # R5: COP31 redrawn from a different angle - the plenary seen
-    # from the BACK of the hall. The foreground is the backs of
-    # the audience's heads; the stage holds a speaker at a podium
-    # and a bright screen lettered with the dek's figure
-    # "144->80". Nothing is shared with paint_cop31's globe-on-top
-    # + draft-stack + delegates-row template, nor with
-    # paint_conference's five-delegates-at-a-table: no globe, no
-    # long table, no seated row facing the viewer.
-    draw.rectangle([x, y, x + w, y + h], fill=(36, 64, 56))
-    # COP31 banner above the screen.
-    bx0, bx1 = x + int(w * 0.28), x + int(w * 0.72)
-    by0 = y + int(h * 0.03)
-    draw.rectangle([bx0, by0, bx1, by0 + int(h * 0.12)], fill=(24, 60, 44))
-    fnt = ImageFont.truetype(SANS_BOLD, 11)
-    draw.text((x + w // 2 - width_of("COP31", fnt) // 2, by0 + 2), "COP31",
-              font=fnt, fill=(244, 196, 84))
-    # Bright screen with the draft-cut figure.
-    sx0, sx1 = x + int(w * 0.14), x + int(w * 0.86)
-    sy0, sy1 = y + int(h * 0.19), y + int(h * 0.52)
-    draw.rectangle([sx0, sy0, sx1, sy1], fill=(240, 238, 228),
-                   outline=(20, 20, 20), width=2)
-    pfnt = ImageFont.truetype(SANS_BOLD, 13)
-    draw.text((x + w // 2 - width_of("144\u219280", pfnt) // 2,
-               y + int(h * 0.28)), "144\u219280", font=pfnt, fill=(168, 38, 32))
-    # No subline on the screen: the speaker's head stands in front
-    # of the screen's lower half, and a "DRAFT CUT" caption there
-    # was split by the speaker (read "DRA CUT"). The dek already
-    # states the draft cut; the screen carries only the figure.
-    # Side banners flanking the screen.
-    for bx in (x + int(w * 0.02), x + int(w * 0.92)):
-        draw.rectangle([bx, y + int(h * 0.16), bx + int(w * 0.06),
-                        y + int(h * 0.55)], fill=(24, 60, 44))
-    # Speaker at a podium, centre stage, small against the screen.
-    px = x + w // 2
-    person(draw, px, y + int(h * 0.38), 0.55, (232, 192, 158), (60, 56, 52),
-           (34, 38, 60), tie=(160, 36, 36))
-    draw.rectangle([px - 13, y + int(h * 0.54), px + 13, y + int(h * 0.70)],
-                   fill=(70, 50, 34))
-    draw.rectangle([px - 13, y + int(h * 0.54), px + 13, y + int(h * 0.56)],
-                   fill=(96, 72, 46))
-    # Stage floor line.
-    draw.rectangle([x, y + int(h * 0.70), x + w, y + int(h * 0.72)],
-                   fill=(20, 40, 34))
-    # Audience foreground: backs of four heads + shoulders along
-    # the bottom, framing the stage. Hair only - no faces, because
-    # these are backs of heads.
-    for fx, hair, suit in ((0.10, (30, 28, 26), (52, 58, 74)),
-                           (0.36, (60, 44, 30), (84, 60, 52)),
-                           (0.64, (200, 200, 200), (66, 52, 76)),
-                           (0.90, (18, 18, 18), (44, 66, 58))):
-        cx = x + int(w * fx)
-        cy = y + int(h * 0.84)
-        r = max(5, int(h * 0.085))
-        draw.rectangle([cx - int(w * 0.13), cy + r - 2, cx + int(w * 0.13),
-                        y + h], fill=suit)
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=hair)
-
-
-def paint_cop31(draw, x, y, w, h, spec):
-    # R4: COP31 closing day - a globe-dominant negotiation scene,
-    # deliberately unlike paint_conference's five-delegates-at-a-table
-    # (that painter now serves no story). A huge Earth disc fills
-    # the top of the frame, a green COP31 ribbon crosses it, and a
-    # long table at the bottom carries the draft document stack
-    # lettered with the dek's figure "144->80". Three delegates sit
-    # low at the table's ends, small against the globe.
-    draw.rectangle([x, y, x + w, y + h], fill=(58, 96, 84))
-    # Globe: big blue disc, centre-top, with green land blobs.
-    gx, gy = x + w // 2, y + int(h * 0.34)
-    gr = int(min(w, h) * 0.34)
-    draw.ellipse([gx - gr, gy - gr, gx + gr, gy + gr], fill=(52, 110, 168))
-    draw.ellipse([gx - int(gr * 0.55), gy - int(gr * 0.45),
-                  gx - int(gr * 0.05), gy + int(gr * 0.05)], fill=(84, 150, 84))
-    draw.ellipse([gx + int(gr * 0.10), gy + int(gr * 0.10),
-                  gx + int(gr * 0.60), gy + int(gr * 0.55)], fill=(84, 150, 84))
-    draw.ellipse([gx - gr, gy - gr, gx + gr, gy + gr], outline=(240, 238, 228), width=2)
-    # Green ribbon banner across the globe's middle.
-    draw.rectangle([x + int(w * 0.06), gy - 9, x + int(w * 0.94), gy + 9],
-                   fill=(24, 60, 44))
-    fnt = ImageFont.truetype(SANS_BOLD, 12)
-    draw.text((x + w // 2 - width_of("COP31", fnt) // 2, gy - 7), "COP31",
-              font=fnt, fill=(244, 196, 84))
-    # Long table along the bottom.
-    table_y = y + int(h * 0.74)
-    draw.rectangle([x + int(w * 0.03), table_y, x + int(w * 0.97), y + h - 2],
-                   fill=(110, 84, 56))
-    draw.rectangle([x + int(w * 0.03), table_y, x + int(w * 0.97), table_y + 4],
-                   fill=(146, 112, 72))
-    # Draft document stack, centre: white pages with the dek's
-    # cut figure lettered on the top page.
-    dx0 = x + w // 2 - 22
-    draw.rectangle([dx0 + 4, table_y - 14, dx0 + 40, table_y - 4],
-                   fill=(228, 226, 218))
-    draw.rectangle([dx0, table_y - 10, dx0 + 36, table_y],
-                   fill=(246, 244, 238))
-    pfnt = ImageFont.truetype(SANS_BOLD, 10)
-    draw.text((dx0 + 3, table_y - 9), "144\u219280", font=pfnt, fill=(168, 38, 32))
-    # Three delegates, small, at the table's ends and one side.
-    for fx, suit, hair in ((0.10, (52, 58, 74), (30, 28, 26)),
-                           (0.88, (84, 60, 52), (200, 200, 200))):
-        person(draw, x + int(w * fx), table_y - 26, 0.8,
-               (232, 192, 158), hair, suit, tie=(240, 238, 230))
-
-
-def paint_nato(draw, x, y, w, h, spec):
-    # R4: NATO assembly - a navy emblem hall, deliberately unlike
-    # paint_ballot's tiered voting chamber (that painter now serves
-    # only the Senate). A large white four-point compass star on a
-    # dark-blue wall, "NATO" lettered beneath it, one speaker at a
-    # podium below, and a row of small member flags along the bottom.
-    draw.rectangle([x, y, x + w, y + h], fill=(28, 44, 92))
-    draw.rectangle([x, y, x + w, y + int(h * 0.14)], fill=(20, 34, 74))
-    # Compass star: four long points, centre disc, thin ring.
-    cx, cy = x + w // 2, y + int(h * 0.36)
-    R, r = int(h * 0.26), int(h * 0.07)
-    star = [(cx, cy - R), (cx + r, cy - r), (cx + R, cy), (cx + r, cy + r),
-            (cx, cy + R), (cx - r, cy + r), (cx - R, cy), (cx - r, cy - r)]
-    draw.polygon(star, fill=(238, 238, 230))
-    draw.ellipse([cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3],
-                 outline=(238, 238, 230), width=2)
-    # No lettering under the star: the speaker's head sits there,
-    # and the "NATO" label chip (top-right) already names the scene.
-    # Speaker at a podium, centre-bottom.
-    px = x + w // 2
-    person(draw, px, y + int(h * 0.58), 0.9, (232, 192, 158), (60, 56, 52),
-           (34, 38, 60), tie=(160, 36, 36))
-    draw.rectangle([px - 20, y + int(h * 0.78), px + 20, y + h - 12],
-                   fill=(70, 50, 34))
-    draw.rectangle([px - 20, y + int(h * 0.78), px + 20, y + int(h * 0.80) + 2],
-                   fill=(96, 72, 46))
-    # Row of small member flags along the very bottom.
-    rng = Lcg(83)
-    tones = [(178, 44, 52), (240, 240, 240), (52, 84, 168), (244, 196, 84),
-             (60, 120, 70), (150, 60, 110)]
-    fx = x + 4
-    while fx < x + w - 12:
-        draw.rectangle([fx, y + h - 10, fx + 9, y + h - 2],
-                       fill=tones[rng.below(len(tones))])
-        fx += 12
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
-
-
-def paint_sco(draw, x, y, w, h, spec):
-    # R4: SCO Civilisations Dialogue Forum - a sandstone arch hall,
-    # deliberately unlike paint_conference's straight table row. A
-    # large round arch frames the stage, "SCO" hangs on a banner
-    # inside it, two glowing lanterns flank the arch, a speaker
-    # stands at a lectern with an open book, and four delegates sit
-    # in a semicircle arc facing the stage.
-    draw.rectangle([x, y, x + w, y + h], fill=(186, 148, 104))
-    # Arch: sandstone wall, dark arch opening, pale keystone band.
-    ax0, ax1 = x + int(w * 0.28), x + int(w * 0.72)
-    ay0 = y + int(h * 0.10)
-    draw.rectangle([ax0, ay0 + int(h * 0.22), ax1, y + int(h * 0.72)],
-                   fill=(52, 44, 40))
-    draw.pieslice([ax0, ay0, ax1, ay0 + int(h * 0.44)], 180, 360,
-                  fill=(52, 44, 40))
-    draw.arc([ax0, ay0, ax1, ay0 + int(h * 0.44)], 180, 360,
-             fill=(240, 232, 210), width=3)
-    draw.rectangle([ax0 - 3, ay0 + int(h * 0.22), ax0 + 3, y + int(h * 0.72)],
-                   fill=(240, 232, 210))
-    draw.rectangle([ax1 - 3, ay0 + int(h * 0.22), ax1 + 3, y + int(h * 0.72)],
-                   fill=(240, 232, 210))
-    # Hanging SCO banner inside the arch.
-    bx0, bx1 = x + int(w * 0.40), x + int(w * 0.60)
-    by0 = ay0 + int(h * 0.10)
-    draw.rectangle([bx0, by0, bx1, by0 + 18], fill=(24, 60, 44))
-    fnt = ImageFont.truetype(SANS_BOLD, 11)
-    draw.text((x + w // 2 - width_of("SCO", fnt) // 2, by0 + 3), "SCO",
-              font=fnt, fill=(244, 196, 84))
-    # Two lanterns flanking the arch, glowing amber.
-    for lx in (x + int(w * 0.16), x + int(w * 0.84)):
-        draw.line([lx, y + int(h * 0.08), lx, y + int(h * 0.22)],
-                  fill=(60, 48, 36), width=2)
-        draw.rectangle([lx - 7, y + int(h * 0.22), lx + 7, y + int(h * 0.38)],
-                       fill=(244, 176, 60), outline=(120, 80, 30))
-        draw.line([lx - 7, y + int(h * 0.30), lx + 7, y + int(h * 0.30)],
-                  fill=(120, 80, 30), width=1)
-    # Speaker at a lectern with an open book, centre stage.
-    lx2 = x + w // 2
-    person(draw, lx2, y + int(h * 0.44), 0.9, (198, 150, 110), (20, 18, 16),
-           (44, 66, 58), tie=(240, 238, 230))
-    draw.polygon([(lx2 - 12, y + int(h * 0.66)), (lx2, y + int(h * 0.62)),
-                  (lx2 + 12, y + int(h * 0.66)), (lx2, y + int(h * 0.70))],
-                 fill=(246, 244, 238), outline=(120, 110, 96))
-    draw.rectangle([lx2 - 2, y + int(h * 0.68), lx2 + 2, y + int(h * 0.80)],
-                   fill=(70, 54, 36))
-    # Four delegates in a shallow arc along the bottom, facing in.
-    for fx, suit, hair in ((0.08, (52, 58, 74), (30, 28, 26)),
-                           (0.30, (84, 60, 52), (120, 90, 60)),
-                           (0.70, (66, 52, 76), (200, 200, 200)),
-                           (0.92, (58, 62, 50), (60, 44, 30))):
-        person(draw, x + int(w * fx), y + int(h * 0.76), 0.85,
-               (232, 192, 158), hair, suit, tie=(240, 238, 230))
-
-
-def paint_rescue(draw, x, y, w, h, spec):
-    # R3: night rescue at sea (Senegal boat search). Dark sky and
-    # sea, one orange rescue boat with a white cabin and a mast,
-    # its searchlight beam sweeping up-right, a small dinghy, a
-    # life-ring, and wave arcs. One boat, one beam, one action -
-    # drawn to decode at 480 px without the headline.
-    draw.rectangle([x, y, x + w, y + h], fill=(34, 48, 76))
-    rng = Lcg(71)
-    for _ in range(14):
-        sx = x + 3 + rng.below(w - 6)
-        sy = y + 3 + rng.below(int(h * 0.38))
-        draw.rectangle([sx, sy, sx + 1, sy + 1], fill=(200, 205, 220))
-    # Low moon, top right.
-    mx0, my0 = x + int(w * 0.84), y + int(h * 0.12)
-    draw.ellipse([mx0 - 8, my0 - 8, mx0 + 8, my0 + 8], fill=(238, 232, 200))
-    sea_y = y + int(h * 0.52)
-    draw.rectangle([x, sea_y, x + w, y + h], fill=(26, 66, 96))
-    draw.rectangle([x, sea_y, x + w, sea_y + 3], fill=(120, 150, 180))
-    # The rescue boat: orange hull, white cabin, mast with a lamp.
-    bx0 = x + int(w * 0.08)
-    hull_y = sea_y + int(h * 0.10)
-    hull_w = int(w * 0.42)
-    draw.polygon([(bx0, hull_y), (bx0 + hull_w, hull_y),
-                  (bx0 + hull_w - 8, hull_y + 14), (bx0 + 8, hull_y + 14)],
-                 fill=(220, 110, 40))
-    draw.rectangle([bx0 + 4, hull_y + 4, bx0 + hull_w - 4, hull_y + 8],
-                   fill=(240, 238, 230))
-    cab_x = bx0 + int(hull_w * 0.30)
-    cab_y = hull_y - 20
-    draw.rectangle([cab_x, cab_y, cab_x + 34, hull_y], fill=(240, 238, 230))
-    for wx in range(cab_x + 5, cab_x + 30, 10):
-        draw.rectangle([wx, cab_y + 5, wx + 6, cab_y + 12], fill=(30, 60, 90))
-    mast_x = cab_x + 38
-    draw.line([mast_x, hull_y, mast_x, cab_y - 16], fill=(220, 220, 220), width=2)
-    # Searchlight beam: a widening pale cone from the mast lamp
-    # up to the top-right sky, clear of the moon.
-    lamp_x, lamp_y = mast_x, cab_y - 16
-    draw.ellipse([lamp_x - 4, lamp_y - 4, lamp_x + 4, lamp_y + 4],
-                 fill=(255, 240, 170))
-    draw.polygon([(lamp_x, lamp_y), (x + int(w * 0.88), y + int(h * 0.10)),
-                  (x + int(w * 0.92), y + int(h * 0.26))],
+def paint_rescue(img, draw, box, story, num):
+    """Night rescue: a boat with a searchlight, a waving crewman,
+    a life ring and a small dinghy on a swell."""
+    x, y, w, h = box
+    SKY = (34, 48, 76)
+    SEAC = (26, 66, 96)
+    ORANGE = (220, 110, 40)
+    WHITE = (240, 238, 230)
+    WAVE = (180, 205, 225)
+    SKIN = (232, 192, 158)
+    draw.rectangle([x, y, x + w, y + h], fill=SKY)
+    draw.rectangle([x, y + 57, x + w, y + 60], fill=(120, 150, 180))
+    draw.rectangle([x, y + 61, x + w, y + h], fill=SEAC)
+    # stars: small pale squares, one larger sparkle
+    for sx, sy in ((22, 22), (28, 39), (35, 28), (35, 40),
+                   (54, 19), (61, 29), (67, 7), (73, 5), (98, 40),
+                   (113, 33)):
+        draw.rectangle([x + sx, y + sy, x + sx + 1, y + sy + 1],
+                       fill=(200, 205, 220))
+    draw.rectangle([x + 43, y + 16, x + 44, y + 17], fill=(200, 205, 220))
+    draw.rectangle([x + 42, y + 18, x + 43, y + 19], fill=(200, 205, 220))
+    # hull with a white waterline stripe (cabin and crew stand on it)
+    draw.polygon([(x + 12, y + 68), (x + 77, y + 68), (x + 69, y + 82),
+                  (x + 20, y + 82)], fill=ORANGE)
+    draw.rectangle([x + 16, y + 72, x + 73, y + 76], fill=WHITE)
+    # searchlight: pole, lamp, then the beam fanning out over both
+    draw.rectangle([x + 68, y + 32, x + 69, y + 68], fill=(220, 220, 220))
+    draw.ellipse([x + 65, y + 28, x + 73, y + 36], fill=(255, 240, 170))
+    draw.polygon([(x + 69, y + 32), (x + 95, y + 24), (x + 99, y + 23),
+                  (x + 142, y + 23), (x + 143, y + 24), (x + 144, y + 28)],
                  fill=(240, 220, 150))
-    # One crew figure on deck, arm raised toward the beam.
-    crew_x = bx0 + int(hull_w * 0.78)
-    person(draw, crew_x, hull_y - 26, 0.85, (232, 192, 158), (30, 26, 22),
-           (220, 110, 40), tie=(220, 110, 40))
-    draw.line([crew_x + 10, hull_y - 14, crew_x + 20, hull_y - 30],
-              fill=(232, 192, 158), width=3)
-    # Life-ring floating left of the boat, and a small dinghy right.
-    rx, ry = x + int(w * 0.62), sea_y + int(h * 0.34)
-    draw.ellipse([rx - 9, ry - 9, rx + 9, ry + 9], outline=(240, 120, 40), width=4)
-    draw.ellipse([rx - 4, ry - 4, rx + 4, ry + 4], fill=(26, 66, 96))
-    dx0 = x + int(w * 0.80)
-    dy0 = sea_y + int(h * 0.26)
-    draw.polygon([(dx0, dy0), (dx0 + 26, dy0), (dx0 + 22, dy0 + 7),
-                  (dx0 + 4, dy0 + 7)], fill=(40, 44, 54))
-    draw.line([dx0 + 20, dy0, dx0 + 20, dy0 - 10], fill=(200, 200, 200), width=2)
-    # Wave arcs across the sea.
-    for wy in (sea_y + int(h * 0.16), sea_y + int(h * 0.30), y + h - 8):
-        for wx in range(x + 8, x + w - 20, 42):
-            draw.arc([wx, wy - 3, wx + 22, wy + 5], 180, 360,
-                     fill=(180, 205, 225), width=2)
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
+    # cabin with two windows
+    draw.rectangle([x + 31, y + 48, x + 65, y + 68], fill=WHITE)
+    draw.rectangle([x + 36, y + 53, x + 42, y + 60], fill=(30, 60, 90))
+    draw.rectangle([x + 46, y + 53, x + 50, y + 60], fill=(30, 60, 90))
+    # crewman: hair, face, life vest over a white shirt, raised arm
+    draw.polygon([(x + 60, y + 41), (x + 64, y + 41), (x + 66, y + 43),
+                  (x + 67, y + 46), (x + 57, y + 46), (x + 58, y + 43)],
+                 fill=(30, 26, 22))
+    draw.polygon([(x + 57, y + 47), (x + 67, y + 47), (x + 67, y + 49),
+                  (x + 66, y + 50), (x + 58, y + 50), (x + 57, y + 49)],
+                 fill=SKIN)
+    draw.rectangle([x + 51, y + 51, x + 59, y + 65], fill=ORANGE)
+    draw.rectangle([x + 65, y + 51, x + 73, y + 65], fill=ORANGE)
+    draw.rectangle([x + 51, y + 53, x + 73, y + 53], fill=ORANGE)
+    draw.rectangle([x + 60, y + 54, x + 64, y + 65], fill=WHITE)
+    draw.polygon([(x + 61, y + 54), (x + 63, y + 54), (x + 62, y + 57)],
+                 fill=ORANGE)
+    draw.line([x + 82, y + 38, x + 72, y + 54], fill=SKIN, width=3)
+    # life ring
+    draw.ellipse([x + 88, y + 85, x + 106, y + 103], fill=(240, 120, 40))
+    draw.ellipse([x + 92, y + 89, x + 102, y + 99], fill=SEAC)
+    # dinghy with a thin mast
+    draw.polygon([(x + 125, y + 85), (x + 151, y + 85), (x + 147, y + 92),
+                  (x + 129, y + 92), (x + 126, y + 87)], fill=(40, 44, 54))
+    draw.rectangle([x + 144, y + 75, x + 145, y + 85],
+                   fill=(200, 200, 200))
+    # rows of wave arcs over everything afloat
+    for wy in (71, 87, 99):
+        for cx in (19, 61, 103, 145):
+            draw.arc([x + cx - 11, y + wy, x + cx + 11, y + wy + 8],
+                     180, 360, fill=WAVE, width=2)
 
 
-# Dotted world map: rows of land cells over a 52x20 grid (stylised -
-# continents readable, coastlines approximate). R3: Africa is
-# widened (rows 9-13) - it read as a thin spike under the wide
-# Eurasian blob; at its widest Africa is now 11 cells against
-# Eurasia's ~22, and the taper to the southern tip is gradual.
-MAP_ROWS = [
-    "                                                    ",
-    "     ##### ##           ##################          ",
-    "    ###########        #####################        ",
-    "   #############       #######################      ",
-    "    ##########          #####################       ",
-    "     ########            ######## ##########        ",
-    "      ######              ######   ########         ",
-    "       ####               #######   ######          ",
-    "       ###                ########   ####           ",
-    "      ####              ########### ######          ",
-    "     ######             ########## #########        ",
-    "     ######              ########  #########        ",
-    "      ####                 #####    ##########      ",
-    "      ###                  ####      ######         ",
-    "       ##                                  ####      ",
-    "       #                                   ####      ",
-    "                                            ##       ",
-    "                                                    ",
-    "                                                    ",
-    "                                                    ",
-]
-
-# Pin positions, NI20: RE-DERIVED for this edition's illustrated
-# stories (the NI19 table is wrong for NI20 and is NOT reused).
-# One (col, row) cell per printed story number on the 52x20 MAP_ROWS
-# grid, fx=(col+0.5)/52, fy=(row+0.5)/20.
-# R4 (12 pins, map 340x224): re-derived for the renumbering AND
-# re-spread in the Europe cluster - measured, not eyeballed (see
-# r4-build-note.md): every centre on a land cell, min pairwise
-# separation 26.0 px (r=12 circles touch at 24.0), zero pin x label
-# collisions. R3's table measured the same way: all 16 centres on
-# land, min separation 25.3 px, zero collisions - seat 2 was right
-# about centres; seat 1's reading came from the pin DISCS (r=12):
-# Wellington's disc was only 48% land, so it read as floating in
-# the sea. R4 enlarges the NZ blob (rows 14-16) so Wellington's
-# disc is 90% land; the Jakarta pin is gone with its story.
-PIN_POSITIONS = {
-    1: (24.5 / 52, 1.5 / 20),    # Brussels (EU-UK summit)
-    2: (38.5 / 52, 6.5 / 20),    # Gopalpur, Odisha (Akvan landfall)
-    3: (25.5 / 52, 9.5 / 20),    # Dakar (Senegal boat search)
-    4: (29.5 / 52, 1.5 / 20),    # Berlin (NATO assembly) - R4: east
-    # from (28.5/52, 1.5/20) to clear Brussels and Zurich
-    5: (28.5 / 52, 5.5 / 20),    # Antalya (COP31) - R4: south from
-    # (27.5/52, 4.5/20) to clear the London pin
-    6: (45.5 / 52, 15.5 / 20),   # Wellington (NZ v India)
-    7: (35.5 / 52, 4.5 / 20),    # Delhi (SCO forum)
-    8: (14.5 / 52, 3.5 / 20),    # Washington DC (Senate vote) -
-    # R4: west from (15.5/52, 3.5/20), the blob's east edge, so
-    # the disc sits mostly on land, not over the Atlantic
-    9: (7.5 / 52, 5.5 / 20),     # Washington DC (Nvidia report) -
-    # R4: south-west from (8.5/52, 4.5/20) to clear Cincinnati
-    10: (33.5 / 52, 2.5 / 20),   # Zurich (FIFA) - R4: east from
-    # (32.5/52, 2.5/20) to clear Berlin
-    11: (10.5 / 52, 3.5 / 20),   # Cincinnati (Fiona the hippo) -
-    # R4: south from (11.5/52, 2.5/20) to clear the Senate pin
-    12: (24.5 / 52, 4.5 / 20),   # London (BAE jobs) - R4: south
-    # from (23.5/52, 3.5/20) to clear Brussels
-}
+def paint_nato(img, draw, box, story, num):
+    """Alliance summit: a white four-point star over a speaker at a
+    lectern, with a row of member flags along the bottom."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(28, 44, 92))
+    draw.rectangle([x, y, x + w, y + 15], fill=(20, 34, 74))
+    # four-point compass star
+    cx, cy = x + 78, y + 39
+    draw.polygon([(cx, y + 11), (cx + 7, y + 32), (cx + 28, cy),
+                  (cx + 7, y + 46), (cx, y + 67), (cx - 7, y + 46),
+                  (cx - 28, cy), (cx - 7, y + 32)], fill=(238, 238, 230))
+    # speaker: hair cap, face, suit with shirt and tie
+    draw.polygon([(x + 76, y + 62), (x + 80, y + 62), (x + 84, y + 66),
+                  (x + 84, y + 68), (x + 72, y + 68), (x + 72, y + 66)],
+                 fill=(60, 56, 52))
+    draw.polygon([(x + 72, y + 69), (x + 84, y + 69), (x + 84, y + 71),
+                  (x + 82, y + 73), (x + 74, y + 73), (x + 72, y + 71)],
+                 fill=(232, 192, 158))
+    draw.rectangle([x + 67, y + 74, x + 75, y + 85], fill=(34, 38, 60))
+    draw.rectangle([x + 81, y + 74, x + 89, y + 85], fill=(34, 38, 60))
+    draw.rectangle([x + 76, y + 74, x + 80, y + 84], fill=(240, 238, 230))
+    draw.polygon([(x + 76, y + 76), (x + 80, y + 76), (x + 78, y + 81)],
+                 fill=(160, 36, 36))
+    # lectern in two tones
+    draw.rectangle([x + 58, y + 85, x + 98, y + 90], fill=(96, 72, 46))
+    draw.rectangle([x + 58, y + 91, x + 98, y + 98], fill=(70, 50, 34))
+    # row of member flags
+    flags = [(178, 44, 52), (240, 240, 240), (178, 44, 52),
+             (150, 60, 110), (178, 44, 52), (150, 60, 110),
+             (52, 84, 168), (240, 240, 240), (52, 84, 168),
+             (240, 240, 240), (52, 84, 168), (240, 240, 240)]
+    for i, col in enumerate(flags):
+        fx = x + 4 + i * 12
+        draw.rectangle([fx, y + 100, fx + 9, y + 108], fill=col)
 
 
-# Region label positions (fx, fy). Every label sits in open water
-# beside its landmass, or just off its edge, over a paper knockout
-# that erases the land field behind it. R2: EUROPE moves to open
-# Atlantic water (0.32, 0.24) - its old spot (0.43, 0.005) put pin
-# 10 on the final "E"; (0.30, 0.005) would collide with the
-# N. AMERICA label and (0.30, 0.13) with pin 9 (Washington) -
-# verified by computation, not by eye. R4: EUROPE moves again to
-# (0.28, 0.30) - the R3 spot's knockout rect is clipped by the
-# London pin's disc after the R4 renumbering (pin 12 at (24.5, 4.5));
-# the new spot is open Atlantic water south of the Americas blob,
-# clear of every pin (verified by computation).
-# AFRICA moves to open water south of the landmass (0.40, 0.80) -
-# its old spot (0.52, 0.68) would collide with pin 16's new
-# southern-tip position.
-REGION_LABELS = {
-    "North America": ("N. AMERICA", 0.20, 0.02),
-    "South America": ("S. AMERICA", 0.01, 0.55),
-    "Europe": ("EUROPE", 0.28, 0.30),
-    "Africa": ("AFRICA", 0.40, 0.80),
-    "Middle East": ("MIDDLE EAST", 0.70, 0.42),
-    "Asia": ("ASIA", 0.78, 0.02),
-    "Oceania": ("OCEANIA", 0.60, 0.82),
-}
+def paint_cop31_plenary(img, draw, box, story, num):
+    """Plenary hall from behind the delegates: a big screen carrying
+    the draft's figure cut, the speaker at the podium, four heads."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(36, 64, 56))
+    # banner and side panels in the hall's deep green
+    draw.rectangle([x + 43, y + 3, x + 113, y + 16], fill=(24, 60, 44))
+    draw.text((x + 58, y + 5), "COP31", font=font(palette.SANS_BOLD, 11),
+              fill=(244, 196, 84))
+    draw.rectangle([x + 3, y + 17, x + 12, y + 60], fill=(24, 60, 44))
+    draw.rectangle([x + 144, y + 17, x + 153, y + 60], fill=(24, 60, 44))
+    # the screen and its message
+    draw.rectangle([x + 21, y + 20, x + 135, y + 57], fill=(20, 20, 20))
+    draw.rectangle([x + 23, y + 22, x + 133, y + 55],
+                   fill=(240, 238, 228))
+    draw.text((x + 50, y + 30), "144\u219280",
+              font=font(palette.SANS_BOLD, 13), fill=(168, 38, 32))
+    # speaker at the podium, in front of the screen's lower edge
+    draw.polygon([(x + 77, y + 40), (x + 79, y + 40), (x + 80, y + 41),
+                  (x + 81, y + 42), (x + 82, y + 43), (x + 82, y + 44),
+                  (x + 74, y + 44), (x + 74, y + 43), (x + 75, y + 42),
+                  (x + 76, y + 41)], fill=(60, 56, 52))
+    draw.polygon([(x + 74, y + 45), (x + 82, y + 45), (x + 82, y + 46),
+                  (x + 81, y + 47), (x + 75, y + 47), (x + 74, y + 46)],
+                 fill=(232, 192, 158))
+    draw.rectangle([x + 71, y + 48, x + 85, y + 57], fill=(34, 38, 60))
+    draw.rectangle([x + 76, y + 48, x + 80, y + 57],
+                   fill=(240, 238, 230))
+    draw.rectangle([x + 76, y + 50, x + 80, y + 50], fill=(160, 36, 36))
+    draw.rectangle([x + 77, y + 51, x + 79, y + 51], fill=(160, 36, 36))
+    draw.rectangle([x + 78, y + 52, x + 78, y + 52], fill=(160, 36, 36))
+    draw.rectangle([x + 65, y + 59, x + 91, y + 61], fill=(96, 72, 46))
+    draw.rectangle([x + 65, y + 62, x + 91, y + 76], fill=(70, 50, 34))
+    # rail between the stage and the delegates
+    draw.rectangle([x, y + 77, x + w, y + 79], fill=(20, 40, 34))
+    # four delegates from behind: round heads over broad shoulders
+    delegates = [(6, (30, 28, 26), (52, 58, 74), -5, 35),
+                 (47, (60, 44, 30), (84, 60, 52), 36, 76),
+                 (91, (200, 200, 200), (66, 52, 76), 80, 120),
+                 (132, (18, 18, 18), (44, 66, 58), 121, 161)]
+    for hx, hair, suit, sx0, sx1 in delegates:
+        draw.rectangle([x + sx0, y + 99, x + sx1, y + 110], fill=suit)
+        draw.ellipse([x + hx, y + 83, x + hx + 18, y + 101], fill=hair)
 
 
-def paint_worldmap(draw, x, y, w, h, spec):
-    """Landmass with big numbered pins for the illustrated stories,
-    placed at each story's true location, plus printed region labels.
-    spec carries 'pins': [(num, region)]; the region is accepted for
-    compatibility but placement now reads PIN_POSITIONS[num]. 'dots'
-    is accepted for compatibility but no longer drawn - 30 small
-    brief dots read as noise at judge scale, so the briefs live only
-    in the index.
-    Round 5: pins sit at explicit true-location positions
-    (PIN_POSITIONS, one per printed story number), each pin clamped
-    inside the map box, and every region label sits in open water
-    over a paper knockout that erases the land field behind it."""
-    cols = len(MAP_ROWS[0])
-    rows = len(MAP_ROWS)
-    # R2: solid silhouettes, not dots - one filled rectangle per
-    # land cell (cell w = map_w/52, h = map_h/20), in the same muted
-    # tone, with a 1 px overlap so no hairline gaps show. At 480 px
-    # the continents now read as solid landmasses.
-    cell_w = w / cols
-    cell_h = h / rows
-    for r, row in enumerate(MAP_ROWS):
-        for c, cell in enumerate(row):
-            if cell == "#":
-                x0 = x + int(c * cell_w)
-                y0 = y + int(r * cell_h)
-                x1 = x + int((c + 1) * cell_w) + 1
-                y1 = y + int((r + 1) * cell_h) + 1
-                draw.rectangle([x0, y0, x1, y1], fill=(176, 170, 156))
-    lab_fnt = ImageFont.truetype(SANS_BOLD, 9)
-    for text, fx, fy in REGION_LABELS.values():
-        lx, ly = x + int(fx * w), y + int(fy * h)
-        tw = width_of(text, lab_fnt)
-        draw.rectangle([lx - 3, ly - 2, lx + tw + 3, ly + 11], fill=PAPER)
-        draw.text((lx, ly), text, font=lab_fnt, fill=(56, 52, 46))
-    pin_r = 12
-    fnt = ImageFont.truetype(SANS_BOLD, 12)
-    for num, region in spec.get("pins") or []:
-        fx, fy = PIN_POSITIONS[num]
-        cx = x + int(fx * w)
-        cy = y + int(fy * h)
-        cx = max(x + pin_r + 1, min(cx, x + w - pin_r - 1))
-        cy = max(y + pin_r + 1, min(cy, y + h - pin_r - 1))
-        draw.ellipse([cx - pin_r, cy - pin_r, cx + pin_r, cy + pin_r],
-                     fill=(168, 38, 32), outline=(247, 243, 234), width=2)
-        label = str(num)
-        draw.text((cx - width_of(label, fnt) // 2, cy - 6), label,
-                  font=fnt, fill=(247, 243, 234))
+def paint_cricket(img, draw, box, story, num):
+    """Outfield and a pale pitch strip: the batsman from behind in the
+    middle, the bowler in blue at the right, a stepped boundary rope
+    sagging along the bottom edge."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(74, 140, 74))
+    draw.rectangle([x, y, x + w, y + 33], fill=(120, 170, 120))
+    draw.rectangle([x + 53, y + 33, x + 103, y + h], fill=(214, 196, 150))
+    # boundary rope treads are drawn at the very end, over everything
+    # batsman from behind: cap, neck, broad white shirt
+    draw.polygon([(x + 66, y + 45), (x + 72, y + 45), (x + 74, y + 46),
+                  (x + 75, y + 47), (x + 78, y + 50), (x + 78, y + 52),
+                  (x + 79, y + 53), (x + 79, y + 55), (x + 59, y + 55),
+                  (x + 59, y + 53), (x + 60, y + 52), (x + 60, y + 50),
+                  (x + 63, y + 47), (x + 64, y + 46)], fill=(28, 28, 30))
+    draw.polygon([(x + 59, y + 56), (x + 79, y + 56), (x + 79, y + 59),
+                  (x + 78, y + 61), (x + 77, y + 62), (x + 75, y + 64),
+                  (x + 63, y + 64), (x + 61, y + 62), (x + 60, y + 61),
+                  (x + 59, y + 59)], fill=(198, 150, 110))
+    draw.rectangle([x + 51, y + 65, x + 87, y + 89], fill=(238, 238, 234))
+    draw.rectangle([x + 65, y + 65, x + 73, y + 89], fill=(240, 238, 230))
+    # a tapering notch cut into the shirt front
+    draw.rectangle([x + 67, y + 67, x + 71, y + 69], fill=(238, 238, 234))
+    draw.rectangle([x + 68, y + 70, x + 70, y + 73], fill=(238, 238, 234))
+    draw.rectangle([x + 69, y + 74, x + 69, y + 76], fill=(238, 238, 234))
+    # three stump tops peeking below the shirt
+    for sx in (72, 77, 82):
+        draw.rectangle([x + sx, y + 90, x + sx + 2, y + 90],
+                       fill=(240, 220, 140))
+    # his arm reaches down to the bat, row by row; the ball sits past it
+    arm_rows = [(70, 85, 85), (71, 84, 86), (72, 82, 87), (73, 83, 87),
+                (74, 84, 88), (75, 84, 89), (76, 85, 90), (77, 86, 90),
+                (78, 87, 91), (79, 87, 92), (80, 88, 93), (81, 89, 94),
+                (82, 90, 94), (83, 91, 95), (84, 91, 96), (85, 92, 97),
+                (86, 93, 98), (87, 94, 98), (88, 95, 99), (89, 95, 100),
+                (90, 96, 101), (91, 97, 99), (92, 98, 98), (93, 98, 98)]
+    for ry, rx0, rx1 in arm_rows:
+        draw.rectangle([x + rx0, y + ry, x + rx1, y + ry],
+                       fill=(232, 192, 158))
+    draw.polygon([(x + 100, y + 90), (x + 103, y + 93), (x + 105, y + 94),
+                  (x + 106, y + 95), (x + 107, y + 96), (x + 108, y + 97),
+                  (x + 110, y + 99), (x + 112, y + 100), (x + 112, y + 101),
+                  (x + 112, y + 103), (x + 113, y + 104),
+                  (x + 112, y + 106), (x + 111, y + 105),
+                  (x + 109, y + 103), (x + 107, y + 102),
+                  (x + 105, y + 100), (x + 103, y + 98),
+                  (x + 100, y + 96), (x + 98, y + 94), (x + 99, y + 92)],
+                 fill=(190, 160, 110))
+    draw.ellipse([x + 113, y + 99, x + 119, y + 105], fill=(200, 40, 36))
+    # bowler in blue: hair, face, body, shirt front with a band
+    draw.polygon([(x + 133, y + 62), (x + 137, y + 62), (x + 140, y + 65),
+                  (x + 141, y + 66), (x + 141, y + 68), (x + 129, y + 68),
+                  (x + 129, y + 66), (x + 130, y + 65)],
+                 fill=(30, 26, 22))
+    draw.polygon([(x + 129, y + 69), (x + 141, y + 69), (x + 141, y + 71),
+                  (x + 140, y + 72), (x + 139, y + 73), (x + 131, y + 73),
+                  (x + 130, y + 72), (x + 129, y + 71)],
+                 fill=(232, 192, 158))
+    draw.rectangle([x + 123, y + 74, x + 147, y + 90], fill=(30, 90, 160))
+    draw.rectangle([x + 133, y + 74, x + 137, y + 90],
+                   fill=(240, 238, 230))
+    draw.rectangle([x + 131, y + 76, x + 139, y + 77], fill=(30, 90, 160))
+    draw.rectangle([x + 134, y + 78, x + 136, y + 79], fill=(30, 90, 160))
+    draw.rectangle([x + 135, y + 80, x + 135, y + 81], fill=(30, 90, 160))
+    # boundary rope: two stair-stepped runs of flat treads, drawn last
+    treads = [(95, 53, 53), (96, 49, 53), (97, 45, 49), (98, 41, 45),
+              (99, 38, 41), (100, 34, 38), (101, 31, 34), (102, 25, 31),
+              (103, 18, 25), (104, 12, 18), (105, 2, 12), (106, 2, 2),
+              (96, 103, 103), (97, 103, 107), (98, 107, 111),
+              (99, 111, 115), (100, 115, 118), (101, 118, 122),
+              (102, 122, 125), (103, 125, 131), (104, 131, 138),
+              (105, 138, 144), (106, 144, 155), (107, 155, 155)]
+    for ty, tx0, tx1 in treads:
+        draw.rectangle([x + tx0, y + ty, x + tx1, y + ty],
+                       fill=(240, 240, 230))
+
+
+def paint_sco(img, draw, box, story, num):
+    """Sandstone hall: a cream-rimmed arch with a green SCO banner,
+    hanging lanterns, a speaker at a lectern and four listeners."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(186, 148, 104))
+    # lanterns on cords, either side of the arch
+    for lx in (18, 124):
+        draw.rectangle([x + lx + 7, y + 8, x + lx + 8, y + 23],
+                       fill=(60, 48, 36))
+        draw.rectangle([x + lx, y + 24, x + lx + 14, y + 41],
+                       outline=(120, 80, 30), width=1)
+        draw.rectangle([x + lx + 1, y + 25, x + lx + 13, y + 40],
+                       fill=(244, 176, 60))
+        draw.rectangle([x + lx + 1, y + 33, x + lx + 13, y + 33],
+                       fill=(120, 80, 30))
+    # arch: cream shell, dark interior (ellipse crowns on straight legs)
+    draw.rectangle([x + 40, y + 35, x + 116, y + 79], fill=(240, 232, 210))
+    crown_out = [(71, 11), (66, 12), (63, 13), (60, 14), (58, 15),
+                 (56, 16), (55, 17), (53, 18), (52, 19), (51, 20),
+                 (50, 21), (49, 22), (48, 23), (47, 24), (46, 25),
+                 (46, 26), (45, 27), (45, 28), (44, 29), (44, 30),
+                 (43, 31), (43, 32), (43, 33), (43, 34), (113, 34),
+                 (113, 33), (113, 32), (113, 31), (112, 30), (112, 29),
+                 (111, 28), (111, 27), (110, 26), (110, 25), (109, 24),
+                 (108, 23), (107, 22), (106, 21), (105, 20), (104, 19),
+                 (103, 18), (101, 17), (100, 16), (98, 15), (96, 14),
+                 (93, 13), (90, 12), (85, 11)]
+    draw.polygon([(x + px, y + py) for px, py in crown_out],
+                 fill=(240, 232, 210))
+    draw.rectangle([x + 47, y + 35, x + 109, y + 79], fill=(52, 44, 40))
+    crown_in = [(72, 14), (67, 15), (63, 16), (61, 17), (59, 18),
+                (57, 19), (55, 20), (54, 21), (52, 22), (51, 23),
+                (50, 24), (50, 25), (49, 26), (48, 27), (48, 28),
+                (47, 29), (47, 30), (47, 31), (46, 32), (46, 33),
+                (46, 34), (110, 34), (110, 33), (110, 32), (109, 31),
+                (109, 30), (109, 29), (108, 28), (108, 27), (107, 26),
+                (106, 25), (106, 24), (105, 23), (104, 22), (102, 21),
+                (101, 20), (99, 19), (97, 18), (95, 17), (93, 16),
+                (89, 15), (84, 14)]
+    draw.polygon([(x + px, y + py) for px, py in crown_in],
+                 fill=(52, 44, 40))
+    # banner with the forum initials
+    draw.rectangle([x + 62, y + 22, x + 94, y + 40], fill=(24, 60, 44))
+    draw.text((x + 66, y + 25), "SCO", font=font(palette.SANS_BOLD, 11),
+              fill=(244, 196, 84))
+    # speaker: hair, face, suit, shirt, papers on the lectern
+    draw.polygon([(x + 76, y + 47), (x + 80, y + 47), (x + 82, y + 49),
+                  (x + 83, y + 50), (x + 84, y + 51), (x + 84, y + 53),
+                  (x + 72, y + 53), (x + 72, y + 51), (x + 73, y + 50),
+                  (x + 74, y + 49)], fill=(20, 18, 16))
+    draw.polygon([(x + 72, y + 54), (x + 84, y + 54), (x + 84, y + 56),
+                  (x + 83, y + 57), (x + 82, y + 58), (x + 74, y + 58),
+                  (x + 73, y + 57), (x + 72, y + 56)],
+                 fill=(198, 150, 110))
+    draw.rectangle([x + 67, y + 59, x + 89, y + 74], fill=(44, 66, 58))
+    draw.rectangle([x + 76, y + 59, x + 80, y + 68],
+                   fill=(240, 238, 230))
+    draw.polygon([(x + 77, y + 68), (x + 79, y + 68), (x + 85, y + 70),
+                  (x + 88, y + 71), (x + 90, y + 72), (x + 88, y + 73),
+                  (x + 86, y + 74), (x + 84, y + 75), (x + 81, y + 76),
+                  (x + 75, y + 76), (x + 73, y + 75), (x + 70, y + 74),
+                  (x + 68, y + 73), (x + 66, y + 72), (x + 68, y + 71),
+                  (x + 71, y + 70), (x + 74, y + 69)],
+                 fill=(120, 110, 96))
+    draw.polygon([(x + 77, y + 69), (x + 79, y + 69), (x + 88, y + 72),
+                  (x + 86, y + 73), (x + 84, y + 74), (x + 81, y + 75),
+                  (x + 75, y + 75), (x + 73, y + 74), (x + 70, y + 73),
+                  (x + 68, y + 72), (x + 71, y + 71), (x + 74, y + 70)],
+                 fill=(246, 244, 238))
+    draw.rectangle([x + 76, y + 74, x + 80, y + 88], fill=(70, 54, 36))
+    # four listeners: same head shape, different hair and suits
+    heads = [(7, (30, 28, 26), (52, 58, 74), 1),
+             (42, (120, 90, 60), (84, 60, 52), 36),
+             (104, (200, 200, 200), (66, 52, 76), 98),
+             (139, (60, 44, 30), (58, 62, 50), 133)]
+    for hx, hair, suit, sx in heads:
+        draw.polygon([(x + hx + 3, y + 82), (x + hx + 7, y + 82),
+                      (x + hx + 8, y + 83), (x + hx + 9, y + 84),
+                      (x + hx + 10, y + 86), (x + hx + 10, y + 87),
+                      (x + hx, y + 87), (x + hx, y + 86),
+                      (x + hx + 1, y + 84), (x + hx + 2, y + 83)],
+                     fill=hair)
+        draw.polygon([(x + hx, y + 88), (x + hx + 10, y + 88),
+                      (x + hx + 10, y + 90), (x + hx + 9, y + 91),
+                      (x + hx + 1, y + 91), (x + hx, y + 90)],
+                     fill=(232, 192, 158))
+        draw.rectangle([x + sx, y + 92, x + sx + 22, y + 106], fill=suit)
+        draw.rectangle([x + sx + 9, y + 92, x + sx + 13, y + 106],
+                       fill=(240, 238, 230))
+
+
+def paint_ballot(img, draw, box, story, num):
+    """Senate chamber: the presiding officer above three bench rows
+    of round heads, some with a hand raised in the vote."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(96, 74, 54))
+    draw.rectangle([x, y, x + w, y + 33], fill=(120, 94, 66))
+    draw.rectangle([x + 143, y + 4, x + 153, y + 22], fill=(20, 20, 24))
+    # presiding officer: hair, face, suit, shirt, tie, podium
+    draw.polygon([(x + 76, y + 10), (x + 80, y + 10), (x + 82, y + 12),
+                  (x + 83, y + 13), (x + 84, y + 14), (x + 84, y + 16),
+                  (x + 72, y + 16), (x + 72, y + 14), (x + 73, y + 13),
+                  (x + 74, y + 12)], fill=(40, 36, 32))
+    draw.polygon([(x + 72, y + 17), (x + 84, y + 17), (x + 84, y + 19),
+                  (x + 83, y + 20), (x + 82, y + 21), (x + 74, y + 21),
+                  (x + 73, y + 20), (x + 72, y + 19)],
+                 fill=(232, 192, 158))
+    draw.rectangle([x + 62, y + 33, x + 94, y + 57], fill=(70, 50, 34))
+    draw.rectangle([x + 67, y + 22, x + 89, y + 37], fill=(34, 38, 60))
+    draw.rectangle([x + 76, y + 22, x + 80, y + 37],
+                   fill=(240, 238, 230))
+    draw.rectangle([x + 76, y + 24, x + 80, y + 25], fill=(160, 36, 36))
+    draw.rectangle([x + 77, y + 26, x + 79, y + 27], fill=(160, 36, 36))
+    draw.rectangle([x + 78, y + 28, x + 78, y + 29], fill=(160, 36, 36))
+    # bench fronts
+    for by in (71, 87, 102):
+        draw.rectangle([x + 6, y + by, x + 151, y + by + 5],
+                       fill=(70, 50, 34))
+    # three rows of heads on a fixed grid; a hand rises beside some
+    grid = (8, 25, 41, 58, 74, 90, 107, 123, 140)
+    hands = {59: (0, 1, 2, 3, 4, 5, 6, 7, 8),
+             75: (3, 6),
+             90: (0, 1, 3, 5, 6)}
+    for hy in (59, 75, 90):
+        for k, gx in enumerate(grid):
+            draw.ellipse([x + gx, y + hy, x + gx + 8, y + hy + 8],
+                         fill=(222, 182, 148))
+            if k in hands[hy]:
+                draw.line([(x + gx + 14, y + hy - 4),
+                           (x + gx + 9, y + hy + 10)],
+                          fill=(222, 182, 148), width=3)
+
+
+def paint_chip(img, draw, box, story, num):
+    """Clean-room scene: a glowing wafer on a stand, a suited worker
+    reaching to it, and a dotted status panel."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(36, 44, 56))
+    # ceiling rods
+    for rx in range(8, w, 26):
+        draw.rectangle([x + rx, y + 4, x + rx + 1, y + 33],
+                       fill=(70, 84, 100))
+    # wafer: two discs and two etched rings, on a post
+    draw.ellipse([x + 41, y + 31, x + 93, y + 83], fill=(90, 220, 230))
+    draw.ellipse([x + 49, y + 39, x + 85, y + 75], fill=(160, 245, 250))
+    draw.ellipse([x + 55, y + 45, x + 79, y + 69], outline=(60, 160, 175))
+    draw.ellipse([x + 61, y + 51, x + 73, y + 63], outline=(60, 160, 175))
+    draw.rectangle([x + 63, y + 83, x + 71, y + 102], fill=(110, 120, 130))
+    # worker: helmet, then body and the arm reaching to the wafer
+    draw.ellipse([x + 147, y + 17, x + 169, y + 39], fill=(238, 240, 242))
+    draw.rectangle([x + 144, y + 39, x + 172, y + 104],
+                   fill=(232, 234, 236))
+    draw.rectangle([x + 91, y + 48, x + 143, y + 53],
+                   fill=(232, 234, 236))
+    draw.rectangle([x + 150, y + 24, x + 166, y + 30], fill=(70, 90, 110))
+    # status panel with glowing dots
+    draw.rectangle([x + 206, y + 22, x + 230, y + 60],
+                   outline=(120, 140, 150))
+    draw.rectangle([x + 207, y + 23, x + 229, y + 59], fill=(52, 66, 84))
+    for dx, dy in ((215, 39), (223, 37), (227, 38), (225, 45),
+                   (222, 56), (226, 55)):
+        draw.rectangle([x + dx, y + dy, x + dx + 2, y + dy + 2],
+                       fill=(120, 230, 200))
+
+
+def paint_football(img, draw, box, story, num):
+    """Pitch from the side: goal with net and a diving keeper at the
+    back, halfway line, centre circle, a player in red in front."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(64, 132, 64))
+    # halfway line and the nearer half in a deeper green
+    draw.rectangle([x, y + 68, x + w, y + 69], fill=(240, 240, 240))
+    draw.rectangle([x, y + 70, x + w, y + h], fill=(56, 118, 56))
+    # goal: white frame, then the net grid over it
+    draw.rectangle([x + 81, y + 19, x + 158, y + 21], fill=(240, 240, 240))
+    draw.rectangle([x + 81, y + 48, x + 158, y + 50], fill=(240, 240, 240))
+    draw.rectangle([x + 81, y + 22, x + 83, y + 47], fill=(240, 240, 240))
+    draw.rectangle([x + 156, y + 22, x + 158, y + 47], fill=(240, 240, 240))
+    for vx in range(87, 158, 10):
+        draw.rectangle([x + vx, y + 19, x + vx, y + 50],
+                       fill=(220, 220, 220))
+    for hy in (25, 33, 41, 49):
+        draw.rectangle([x + 81, y + hy, x + 158, y + hy],
+                       fill=(220, 220, 220))
+    # diving keeper in yellow, dark shorts block in front
+    draw.polygon([(x + 98, y + 36), (x + 102, y + 36), (x + 104, y + 37),
+                  (x + 106, y + 39), (x + 107, y + 41), (x + 107, y + 52),
+                  (x + 84, y + 52), (x + 84, y + 40), (x + 94, y + 39),
+                  (x + 96, y + 37)], fill=(240, 200, 60))
+    draw.rectangle([x + 102, y + 44, x + 116, y + 54], fill=(30, 30, 34))
+    # the ball, resting inside the goal's right corner
+    draw.ellipse([x + 134, y + 43, x + 144, y + 53],
+                 fill=(245, 245, 245), outline=(30, 30, 30))
+    draw.ellipse([x + 137, y + 46, x + 141, y + 50], fill=(30, 30, 30))
+    # centre circle in the near half
+    draw.ellipse([x + 91, y + 74, x + 148, y + 103],
+                 outline=(240, 240, 240), width=2)
+    # player in a red strip: cap, face, blazer, shirt, tie, arm
+    draw.polygon([(x + 170, y + 56), (x + 174, y + 56), (x + 176, y + 57),
+                  (x + 178, y + 59), (x + 179, y + 61), (x + 179, y + 63),
+                  (x + 165, y + 63), (x + 165, y + 61), (x + 166, y + 59),
+                  (x + 168, y + 57)], fill=(20, 18, 16))
+    draw.polygon([(x + 165, y + 64), (x + 179, y + 64), (x + 179, y + 66),
+                  (x + 178, y + 67), (x + 178, y + 68), (x + 177, y + 69),
+                  (x + 167, y + 69), (x + 166, y + 68), (x + 166, y + 67),
+                  (x + 165, y + 66)], fill=(198, 150, 110))
+    draw.rectangle([x + 158, y + 70, x + 186, y + 88], fill=(178, 40, 40))
+    draw.rectangle([x + 169, y + 70, x + 175, y + 88],
+                   fill=(240, 238, 230))
+    draw.polygon([(x + 170, y + 72), (x + 174, y + 72), (x + 173, y + 76),
+                  (x + 172, y + 78), (x + 171, y + 76)],
+                 fill=(178, 40, 40))
+    draw.line([(x + 182, y + 79), (x + 196, y + 88)],
+              fill=(198, 150, 110), width=4)
+
+
+def paint_hippo(img, draw, box, story, num):
+    """Hippo in a pool: fence and wall behind, the animal's head and
+    back above the waterline, a red buoy floating nearby."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(72, 130, 168))
+    draw.rectangle([x, y, x + w, y + 23], fill=(196, 214, 190))
+    draw.rectangle([x, y + 24, x + w, y + 32], fill=(120, 130, 110))
+    for px in range(8, w, 22):
+        draw.rectangle([x + px, y + 11, x + px + 1, y + 32],
+                       fill=(70, 70, 66))
+    # body and head ellipses, snout, ears, eyes and nostrils
+    draw.ellipse([x + 58, y + 46, x + 162, y + 94], fill=(140, 132, 128))
+    draw.ellipse([x + 44, y + 56, x + 102, y + 90], fill=(150, 142, 138))
+    draw.ellipse([x + 38, y + 70, x + 76, y + 88], fill=(160, 152, 148))
+    for ex in (47, 67):
+        draw.ellipse([x + ex, y + 48, x + ex + 10, y + 58],
+                     fill=(140, 132, 128), outline=(90, 84, 80))
+    for ex in (51, 67):
+        draw.ellipse([x + ex, y + 60, x + ex + 6, y + 66],
+                     fill=(24, 22, 20))
+    for ex in (46, 62):
+        draw.ellipse([x + ex, y + 74, x + ex + 6, y + 80],
+                     fill=(40, 36, 32))
+    # wake: two widening ripples under the body
+    draw.arc([x + 42, y + 62, x + 178, y + 98], 0, 180,
+             fill=(200, 225, 235), width=2)
+    draw.arc([x + 52, y + 62, x + 168, y + 98], 0, 180,
+             fill=(200, 225, 235), width=2)
+    # buoy: red cone, dark base, white lamp on top
+    draw.polygon([(x + 184, y + 69), (x + 200, y + 69), (x + 204, y + 79),
+                  (x + 180, y + 79)], fill=(178, 40, 40))
+    draw.rectangle([x + 180, y + 79, x + 204, y + 83], fill=(140, 28, 28))
+    draw.ellipse([x + 189, y + 65, x + 195, y + 71], fill=(240, 240, 240))
+
+
+def paint_factory(img, draw, box, story, num):
+    """Arms factory: sawtooth roof, twin chimneys with smoke puffs,
+    a row of lit windows and a worker with a crate."""
+    x, y, w, h = box
+    draw.rectangle([x, y, x + w, y + h], fill=(140, 152, 164))
+    draw.rectangle([x, y + 38, x + w, y + 89], fill=(168, 178, 186))
+    draw.rectangle([x, y + 90, x + w, y + h], fill=(110, 106, 98))
+    # chimneys, each with a three-puff smoke stack
+    for cx0 in (38, 72):
+        draw.rectangle([x + cx0, y + 11, x + cx0 + 10, y + 45],
+                       fill=(120, 60, 50))
+        draw.ellipse([x + cx0 + 2, y + 8, x + cx0 + 8, y + 14],
+                     fill=(168, 160, 150))
+        draw.ellipse([x + cx0 + 5, y + 5, x + cx0 + 9, y + 9],
+                     fill=(188, 180, 170))
+        draw.ellipse([x + cx0 + 2, y + 2, x + cx0 + 6, y + 6],
+                     fill=(205, 198, 188))
+    # walls, then the sawtooth roof strip over their top
+    draw.rectangle([x + 24, y + 46, x + 222, y + 90], fill=(96, 104, 116))
+    draw.polygon([(x + 24, y + 46), (x + 48, y + 32), (x + 73, y + 46),
+                  (x + 97, y + 32), (x + 122, y + 46), (x + 146, y + 32),
+                  (x + 171, y + 46), (x + 195, y + 32), (x + 220, y + 46)],
+                 fill=(80, 88, 100))
+    # lit windows and the loading door
+    for k in range(9):
+        wx = x + 32 + k * 20
+        draw.rectangle([wx, y + 58, wx + 12, y + 70], fill=(240, 200, 110))
+    draw.rectangle([x + 106, y + 76, x + 135, y + 90], fill=(40, 42, 48))
+    # worker in a blue jacket with a tie, crate beside him
+    draw.polygon([(x + 167, y + 55), (x + 171, y + 55), (x + 175, y + 59),
+                  (x + 175, y + 61), (x + 163, y + 61), (x + 163, y + 59)],
+                 fill=(30, 26, 22))
+    draw.polygon([(x + 163, y + 62), (x + 175, y + 62), (x + 175, y + 64),
+                  (x + 173, y + 66), (x + 165, y + 66), (x + 163, y + 64)],
+                 fill=(198, 150, 110))
+    draw.rectangle([x + 157, y + 67, x + 181, y + 83], fill=(52, 84, 130))
+    draw.rectangle([x + 167, y + 67, x + 171, y + 83],
+                   fill=(240, 238, 230))
+    draw.rectangle([x + 167, y + 69, x + 171, y + 70], fill=(52, 84, 130))
+    draw.polygon([(x + 168, y + 71), (x + 170, y + 71), (x + 169, y + 74)],
+                 fill=(52, 84, 130))
+    draw.rectangle([x + 183, y + 82, x + 195, y + 89], fill=(140, 90, 40))
 
 
 PAINTERS = {
-    "sea_strike": paint_sea_strike,
-    "bridge_fallen": paint_bridge_fallen,
-    "clinic_ward": paint_clinic_ward,
     "cyclone": paint_cyclone,
-    "summit": paint_summit,
-    "case_map": paint_case_map,
-    "chart_down": paint_chart_down,
-    "chart_up": paint_chart_up,
-    "chip": paint_chip,
-    "missiles": paint_missiles,
-    "probe": paint_probe,
-    "ballot": paint_ballot,
-    "scales": paint_scales,
-    "tents": paint_tents,
-    "conference": paint_conference,
-    "cop31": paint_cop31,
-    "cop31_plenary": paint_cop31_plenary,
     "summit_side": paint_summit_side,
-    "nato": paint_nato,
-    "sco": paint_sco,
-    "gta_skyline": paint_gta_skyline,
-    "tower_strike": paint_tower_strike,
     "rescue": paint_rescue,
+    "nato": paint_nato,
+    "cop31_plenary": paint_cop31_plenary,
     "cricket": paint_cricket,
-    "stumps": paint_stumps,
+    "sco": paint_sco,
+    "ballot": paint_ballot,
+    "chip": paint_chip,
     "football": paint_football,
     "hippo": paint_hippo,
-    "drought": paint_drought,
     "factory": paint_factory,
-    "worldmap": paint_worldmap,
 }
+
+
+def _label_chip(draw, box, label, side="right", hero=False):
+    """Black chip inside the scene's top corner carrying a label.
+
+    The chip hugs the corner named by ``side``; its width follows the
+    label's ink box, and the label sits at a fixed inset.
+    """
+    x, y, w, h = box
+    fnt = font(palette.SANS_BOLD, 11)
+    bb = ink_box(draw, label, fnt)
+    chip_w = bb[2] + 10
+    if side == "right":
+        cx1 = x + w - 4
+        cx0 = cx1 - chip_w
+    else:
+        cx0 = x + 4
+        cx1 = cx0 + chip_w
+    cy0 = y + 4
+    draw.rectangle([cx0, cy0, cx1, cy0 + 18], fill=palette.CHIP_FILL)
+    draw.text((cx0 + 5, cy0 + 3), label, font=fnt, fill=(245, 242, 235))
+    return cx0, cy0, cx1, cy0 + 18
+
+
+def _number_badge(draw, box, num):
+    """Ink badge (16x14) with the story number, inside the top-left."""
+    x, y, w, h = box
+    draw.rectangle([x + 5, y + 5, x + 20, y + 18], fill=palette.INK)
+    label = str(num)
+    fnt = font(palette.SANS_BOLD, 9)
+    bb = ink_box(draw, label, fnt)
+    draw.text((x + 9, y + 7), label, font=fnt, fill=palette.PAPER)
+
+
+def paint_scene(img, draw, box, story):
+    """Paint one illustrated story: scene, frame, badge, chip.
+
+    The painter draws straight onto the page inside its box; the
+    frame is stroked over the top afterwards, so a painter may
+    deliberately bleed a shape under the frame line.
+    """
+    painter = PAINTERS[story["scene"]]
+    x, y, w, h = box
+    painter(img, draw, box, story, story["num"])
+    draw.rectangle([x, y, x + w, y + h], outline=palette.FRAME, width=1)
+    if story.get("tier") == "hero":
+        _number_badge(draw, box, story["num"])
+    label = (story.get("scene_spec") or {}).get("label")
+    if label:
+        side = CHIP_SIDE.get(story["scene"], "right")
+        _label_chip(draw, box, label, side=side,
+                    hero=story.get("tier") == "hero")
+    if story["scene"] == "cricket":
+        figure = next(tok for tok in story["headline"].split()
+                      if "*" in tok)
+        _label_chip(draw, box, figure, side="right")
