@@ -19,8 +19,10 @@ Stories are numbered continuously 1..46 in page order (4 heroes,
 stories only, at the re-derived NI20 positions in scenes.py.
 The DATE CHECK names only stories NOT printed on the page
 (Voyager 18 Nov, ICJ 19 Nov, Crimea Bridge 19 Nov, Pete Rose
-19 Nov) - GTA VI and Anthropic are carried as dated cards, so
-they are deliberately NOT in the check.
+19 Nov, plus - R3 - the five displaced 19-Nov items: Shenzhen
+summit, PIF Tower strike, Dow close, Anthropic debut, GTA VI).
+The 20-Nov day-two Anthropic verdict still prints in the index,
+so the check names the debut, not the company.
 """
 
 from PIL import Image, ImageDraw
@@ -57,9 +59,15 @@ DEK_INK = (34, 32, 29)
 HAIRLINE = (40, 38, 34)
 
 DATE_CHECK_LABEL = "DATE CHECK \u2014 NOT TODAY:"
+# R3: the five displaced 19-Nov items join the check (Shenzhen
+# summit, PIF Tower strike, Dow close, Anthropic debut, GTA VI).
+# The strip wraps to two lines at 9 px; verified in-render.
 DATE_CHECK_REST = ("Voyager 1 light-day (18 Nov) \u00b7 ICJ Myanmar ruling "
                    "(19 Nov) \u00b7 Crimea Bridge strike (19 Nov) \u00b7 "
-                   "Pete Rose pardon (19 Nov)")
+                   "Pete Rose pardon (19 Nov) \u00b7 Shenzhen summit "
+                   "(19 Nov) \u00b7 PIF Tower strike (19 Nov) \u00b7 "
+                   "Dow \u22121,101 close (19 Nov) \u00b7 Anthropic debut "
+                   "(19 Nov) \u00b7 GTA VI $1.84bn (19 Nov)")
 
 
 def _text(draw, xy, text, fnt, fill=INK):

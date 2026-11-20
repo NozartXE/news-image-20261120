@@ -6,13 +6,13 @@
     {
       "label": "OVERNIGHT",
       "text": "Senegal search",
-      "story_num": 42,
+      "story_num": 3,
       "sourced_time": false
     },
     {
       "label": "MORNING",
       "text": "EU–UK summit",
-      "story_num": 32,
+      "story_num": 1,
       "sourced_time": false
     },
     {
@@ -30,62 +30,84 @@
     },
     {
       "label": "EVENING",
-      "text": "Dow close",
-      "story_num": 5,
+      "text": "NATO opens",
+      "story_num": 6,
       "sourced_time": false
     },
     {
       "label": "LATE",
       "text": "SCO forum",
-      "story_num": 43,
+      "story_num": 7,
       "sourced_time": false
     }
   ],
   "stories": [
     {
-      "id": "B1",
+      "id": "A26",
       "tier": "hero",
-      "region": "Asia",
-      "place": "SHENZHEN",
-      "headline": "Trump, Xi, Putin meet in Shenzhen",
-      "dek": "Trump, Xi, Putin meet 1h20m; 4-point declaration. — 19 NOV",
+      "region": "Europe",
+      "place": "BRUSSELS",
+      "headline": "EU–UK summit opens in Brussels",
+      "dek": "3 deals on table; +0.4% to UK economy · 20 NOV",
       "scene": "summit",
       "scene_spec": {
         "flags": [
           [
-            "CHINA",
+            "EU",
             [
-              178,
-              34,
-              34
+              0,
+              51,
+              153
             ]
           ],
           [
-            "RUSSIA",
+            "EU",
             [
-              52,
-              84,
-              160
+              0,
+              51,
+              153
             ]
           ],
           [
-            "USA",
+            "UK",
             [
-              60,
-              59,
-              110
+              0,
+              36,
+              125
             ]
+          ]
+        ],
+        "names": [
+          "VON DER LEYEN",
+          "COSTA",
+          "BURNHAM"
+        ],
+        "hair": [
+          [
+            212,
+            192,
+            132
+          ],
+          [
+            178,
+            178,
+            178
+          ],
+          [
+            96,
+            90,
+            84
           ]
         ]
       },
       "sources": [
-        "Reuters",
-        "Haaretz"
+        "AP",
+        "Le Monde"
       ],
-      "source_section": "B",
-      "date_treatment": "19 NOV kicker; reported into 20 Nov",
+      "source_section": "A",
+      "date_treatment": "20 Nov; 2nd EU-UK summit, Burnham meets von der Leyen and Costa",
       "num": 1,
-      "kicker_date": "19 NOV"
+      "kicker_date": "20 NOV"
     },
     {
       "id": "A1",
@@ -107,24 +129,24 @@
       "kicker_date": "20 NOV"
     },
     {
-      "id": "B3",
+      "id": "A54",
       "tier": "hero",
-      "region": "Middle East",
-      "place": "RIYADH",
-      "headline": "Missile scars Riyadh tower",
-      "dek": "80 storeys, 385 m; several floors damaged, no casualties. — 19 NOV",
-      "scene": "tower_strike",
+      "region": "Africa",
+      "place": "DAKAR",
+      "headline": "Search goes on after Senegal boat sinks",
+      "dek": "Dozens missing; search goes on · 20 NOV",
+      "scene": "rescue",
       "scene_spec": {
-        "label": "PIF TOWER"
+        "label": "DAKAR"
       },
       "sources": [
         "Reuters",
-        "Al Jazeera"
+        "Vatican News"
       ],
-      "source_section": "B",
-      "date_treatment": "19 NOV kicker",
+      "source_section": "A",
+      "date_treatment": "Capsized 18 Nov off Yenne; search ongoing 19-20 Nov",
       "num": 3,
-      "kicker_date": "19 NOV"
+      "kicker_date": "20 NOV"
     },
     {
       "id": "A2",
@@ -144,62 +166,62 @@
       "kicker_date": "20 NOV"
     },
     {
-      "id": "A5",
+      "id": "A32",
       "tier": "card",
       "region": "North America",
-      "place": "NEW YORK",
-      "headline": "Wall Street slides as Dow falls",
-      "dek": "−1,101 (−2.19%) · 19 NOV",
-      "scene": "chart_down",
+      "place": "WASHINGTON",
+      "headline": "Nvidia link in chip-smuggling case",
+      "dek": "Ex-No.3's wife linked · 20 NOV",
+      "scene": "chip",
       "scene_spec": {
-        "label": "DOW"
+        "label": "NVIDIA"
       },
       "sources": [
-        "Reuters",
-        "Barron's"
+        "NDTV"
       ],
       "source_section": "A",
-      "date_treatment": "19 Nov US close, reported 20 Nov",
+      "date_treatment": "Reported 20 Nov (NDTV); Muddy Waters report 17 Nov",
       "num": 5,
-      "kicker_date": "19 NOV CLOSE"
+      "kicker_date": "20 NOV"
     },
     {
-      "id": "B5",
+      "id": "A40",
       "tier": "card",
-      "region": "North America",
-      "place": "NEW YORK",
-      "headline": "Anthropic debut jumps 17%",
-      "dek": "+17% · ~$1.3tn · 19 NOV",
-      "scene": "chart_up",
+      "region": "Europe",
+      "place": "BERLIN",
+      "headline": "NATO assembly opens in Berlin",
+      "dek": "72nd session · 20 NOV",
+      "scene": "ballot",
       "scene_spec": {
-        "label": "ANT"
+        "label": "NATO"
       },
       "sources": [
-        "WSJ"
+        "NATO PA"
       ],
-      "source_section": "B",
-      "date_treatment": "19 NOV kicker; valuation on close basis",
+      "source_section": "A",
+      "date_treatment": "20 Nov; 72nd Annual Session, 20-23 Nov",
       "num": 6,
-      "kicker_date": "19 NOV"
+      "kicker_date": "20 NOV"
     },
     {
-      "id": "B6",
+      "id": "A58",
       "tier": "card",
-      "region": "Global",
-      "place": "LEONIDA",
-      "headline": "GTA VI launches to record estimates",
-      "dek": "~$1.84bn EST. · 19 NOV",
-      "scene": "gta_skyline",
+      "region": "Asia",
+      "place": "DELHI",
+      "headline": "Pakistan leads SCO team to Delhi",
+      "dek": "Forum opens in Delhi · 20 NOV",
+      "scene": "conference",
       "scene_spec": {
-        "label": "GTA VI"
+        "banner": "SCO",
+        "placard": "SCO"
       },
       "sources": [
-        "Sensor Tower"
+        "Geo News"
       ],
-      "source_section": "B",
-      "date_treatment": "19 NOV kicker; Sensor Tower ESTIMATE",
+      "source_section": "A",
+      "date_treatment": "20 Nov; first SCO Civilisations Dialogue Forum, 20-22 Nov",
       "num": 7,
-      "kicker_date": "19 NOV"
+      "kicker_date": "20 NOV"
     },
     {
       "id": "A3",
@@ -598,21 +620,6 @@
       "num": 31
     },
     {
-      "id": "A26",
-      "tier": "index",
-      "region": "Europe",
-      "place": "BRUSSELS",
-      "brief": "EU–UK summit opens in Brussels.",
-      "scene": null,
-      "scene_spec": {},
-      "sources": [
-        "Consilium"
-      ],
-      "source_section": "A",
-      "date_treatment": "20 Nov",
-      "num": 32
-    },
-    {
       "id": "A28",
       "tier": "index",
       "region": "Middle East",
@@ -625,7 +632,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 33
+      "num": 32
     },
     {
       "id": "A30",
@@ -641,22 +648,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 34
-    },
-    {
-      "id": "A32",
-      "tier": "index",
-      "region": "North America",
-      "place": "WASHINGTON",
-      "brief": "Nvidia link in chip-smuggling report.",
-      "scene": null,
-      "scene_spec": {},
-      "sources": [
-        "NDTV"
-      ],
-      "source_section": "A",
-      "date_treatment": "20 Nov",
-      "num": 35
+      "num": 33
     },
     {
       "id": "A33",
@@ -671,7 +663,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 36
+      "num": 34
     },
     {
       "id": "A34",
@@ -686,7 +678,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 37
+      "num": 35
     },
     {
       "id": "A39",
@@ -701,22 +693,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 38
-    },
-    {
-      "id": "A40",
-      "tier": "index",
-      "region": "Europe",
-      "place": "BERLIN",
-      "brief": "NATO assembly opens 72nd session in Berlin.",
-      "scene": null,
-      "scene_spec": {},
-      "sources": [
-        "NATO PA"
-      ],
-      "source_section": "A",
-      "date_treatment": "20 Nov",
-      "num": 39
+      "num": 36
     },
     {
       "id": "A41",
@@ -731,7 +708,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 40
+      "num": 37
     },
     {
       "id": "A48",
@@ -746,37 +723,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 41
-    },
-    {
-      "id": "A54",
-      "tier": "index",
-      "region": "Africa",
-      "place": "DAKAR",
-      "brief": "Search goes on after Senegal boat capsizes.",
-      "scene": null,
-      "scene_spec": {},
-      "sources": [
-        "Reuters"
-      ],
-      "source_section": "A",
-      "date_treatment": "20 Nov",
-      "num": 42
-    },
-    {
-      "id": "A58",
-      "tier": "index",
-      "region": "Asia",
-      "place": "DELHI",
-      "brief": "Pakistan minister leads SCO delegation to Delhi.",
-      "scene": null,
-      "scene_spec": {},
-      "sources": [
-        "Geo News"
-      ],
-      "source_section": "A",
-      "date_treatment": "20 Nov",
-      "num": 43
+      "num": 38
     },
     {
       "id": "A60",
@@ -791,14 +738,14 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 44
+      "num": 39
     },
     {
       "id": "A56",
       "tier": "index",
       "region": "North America",
       "place": "NEW YORK",
-      "brief": "Anthropic debut fails to lift AI stocks.",
+      "brief": "AI stocks fall on day two of Anthropic trading.",
       "scene": null,
       "scene_spec": {},
       "sources": [
@@ -807,7 +754,7 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
-      "num": 45
+      "num": 40
     },
     {
       "id": "A52",
@@ -823,6 +770,81 @@
       ],
       "source_section": "A",
       "date_treatment": "20 Nov",
+      "num": 41
+    },
+    {
+      "id": "A36",
+      "tier": "index",
+      "region": "Europe",
+      "place": "LONDON",
+      "brief": "Youth strike sweeps Europe against war and rearmament.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Straits Times"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; International Youth Strike, 25+ countries",
+      "num": 42
+    },
+    {
+      "id": "A63",
+      "tier": "index",
+      "region": "Global",
+      "place": "LONDON",
+      "brief": "Brent oil up to $92.22 as Riyadh attacks lift fears.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Reuters"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; Brent +0.3% Fri morning",
+      "num": 43
+    },
+    {
+      "id": "A64",
+      "tier": "index",
+      "region": "Asia",
+      "place": "SEOUL",
+      "brief": "Seoul court upholds Kakao founder's acquittal.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Reuters"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; appeals court upholds acquittal",
+      "num": 44
+    },
+    {
+      "id": "A65",
+      "tier": "index",
+      "region": "Oceania",
+      "place": "SYDNEY",
+      "brief": "Sydney man charged with terror offences after raid.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Reuters"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; charged Fri after Sydney raid",
+      "num": 45
+    },
+    {
+      "id": "A66",
+      "tier": "index",
+      "region": "Europe",
+      "place": "KYIV",
+      "brief": "Missile debris sets Kyiv building ablaze.",
+      "scene": null,
+      "scene_spec": {},
+      "sources": [
+        "Reuters"
+      ],
+      "source_section": "A",
+      "date_treatment": "20 Nov; fire in Obolonskyi district",
       "num": 46
     }
   ],
@@ -841,7 +863,16 @@
       "A7 Modi meets Prince and Princess of Wales: met 18 Nov (PIB)",
       "A31 Iran 2,500 missiles: WSJ report 14 Nov, low confidence",
       "A53 Amur falcons: tracked over Arabian Sea 19 Nov",
-      "A62 Serbia speaker: Cupic elected 19 Nov (140 votes), not 'no result'"
+      "A62 Serbia speaker: Cupic elected 19 Nov (140 votes), not 'no result'",
+      "B1 Shenzhen trilateral: 19 Nov, displaced by R3 date discipline (now DATE CHECK)",
+      "B3 PIF Tower strike: 19 Nov, displaced by R3 (now DATE CHECK)",
+      "A5 Dow -1,101: 19 Nov US close, displaced by R3 (now DATE CHECK)",
+      "B5 Anthropic debut: 19 Nov, displaced by R3 (now DATE CHECK)",
+      "B6 GTA VI $1.84bn: 19 Nov, displaced by R3 (now DATE CHECK)",
+      "A43 Philippines-Chile trade: signed Thu 19 Nov (all wires), not 20 Nov",
+      "A44 Musk Philippines projects: envoy interview Thu 19 Nov, visit 18 Nov; projects unconfirmed",
+      "A45 COP31 AI pledge: launched Mon 16 Nov, Reuters reported 17 Nov",
+      "A61 India Science Festival: curtain-raiser Wed 18 Nov"
     ],
     "kept_with_correction": [
       "A39 Merz hosts Qatar emir: emir arrived 19 Nov, talks Fri 20 Nov",
@@ -851,13 +882,25 @@
       "A58 Pakistan SCO: minister Musadik Malik leads delegation (not PM), forum opens 20 Nov",
       "A52 bird-flu vaccine: dedication event on 20 Nov in Bhopal",
       "A26 EU-UK summit: verified, Brussels 20 Nov, Burnham/Costa/von der Leyen",
-      "A55 SA cricket: NDTV 20-Nov list"
+      "A55 SA cricket: NDTV 20-Nov list",
+      "A26 EU-UK summit: VERIFIED R3 - 2nd summit, Brussels 20 Nov; Burnham (PM since Jul 2026) meets von der Leyen + Costa; 3 deals; +0.4% UK economy (AP/Le Monde)",
+      "A54 Senegal boat: VERIFIED R3 - capsized Wed 18 Nov ~02:00 off Yenne; search ongoing Thu/Fri (Reuters/Vatican News); ~50 vs ~100 aboard conflict, so no aboard figure printed",
+      "A40 NATO assembly: VERIFIED R3 - 72nd Annual Session, Berlin 20-23 Nov (NATO PA)",
+      "A58 SCO forum: VERIFIED R3 - first SCO Civilisations Dialogue Forum, Delhi 20-22 Nov, Modi inaugurates; Malik leads Pakistan delegation (Geo/Indian Express)",
+      "A32 Nvidia: VERIFIED R3 - NDTV 20-Nov list; Muddy Waters report 17 Nov, marriage reported 18 Nov; $2.5bn alleged operation NOT printed (unproven, Chen uncharged)",
+      "A36 youth strike: VERIFIED R3 - International Youth Strike Fri 20 Nov, 25+ countries (Straits Times)",
+      "A63 Brent oil: VERIFIED R3 - Brent $92.22 +0.3% Fri 20 Nov (Reuters)",
+      "A64 Kakao: VERIFIED R3 - Seoul appeals court upholds acquittal Fri 20 Nov (Reuters)",
+      "A65 Sydney terror charge: VERIFIED R3 - charged Fri 20 Nov after Sydney raid (Reuters)",
+      "A66 Kyiv fire: VERIFIED R3 - missile debris fire, Obolonskyi district, Fri 20 Nov (Reuters)",
+      "A56 brief reworded R3: 'Anthropic debut' removed so DATE CHECK exclusion 'Anthropic debut' cannot collide; day-two verdict kept"
     ],
     "figures_single_basis": [
       "Akvan ~298,676 evacuated (Thu evening), NOT 105,304 sheltered",
-      "Dow -1,101 close 19 Nov, NOT -1,084 intraday",
-      "Anthropic ~$1.3tn close basis (not $1.5tn fully diluted)",
-      "GTA VI ~$1.84bn Sensor Tower ESTIMATE, not official"
+      "EU-UK +0.4% to UK economy (Burnham, AP); 3 deals on table (Le Monde/FMT)",
+      "NATO 72nd session (NATO PA)",
+      "Brent $92.22 Fri morning (Reuters)",
+      "Senegal: no aboard figure printed (~50 official vs ~100 survivor, unresolved)"
     ]
   }
 }

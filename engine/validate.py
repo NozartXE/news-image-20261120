@@ -14,10 +14,13 @@ encode the C2 standard as judged for this edition:
   stories appear only as heroes/cards with a "19 NOV" kicker, and
   Section C never appears anywhere;
 - every hero/card dek carries its date; key figures are printed once
-  and on one stated basis (Akvan ~298,676 evacuated, Dow -1,101 close,
-  Anthropic ~$1.3tn close basis, GTA VI ~$1.84bn ESTIMATE);
+  and on one stated basis (Akvan ~298,676 evacuated, EU-UK +0.4%,
+  NATO 72nd session, Brent $92.22);
 - the DATE CHECK names only stories NOT printed on the page, so it
-  can never contradict a hero or card kicker.
+  can never contradict a hero or card kicker. R3: it names nine
+  exclusions, including the five 19-Nov items displaced from the
+  illustrated slots (Shenzhen summit, PIF Tower, Dow close,
+  Anthropic debut, GTA VI).
 """
 
 import re
@@ -36,12 +39,22 @@ CLOCK_RE = re.compile(r"\d{1,2}:\d{2}|~\d{1,2}\b|\b\d{1,2}\s?(?:AM|PM)\b", re.I)
 DATE_TOKEN_RE = re.compile(r"\b(?:19|20) NOV\b|REPORTED 20 NOV", re.I)
 
 # Figures that must appear exactly once on the page (and never twice).
-SINGLE_FIGURES = ("298,676", "1,101", "$1.3tn", "$1.84bn", "146*", "317/6", "51\u201348", "1,070")
+# R3: "1,101", "$1.3tn" and "$1.84bn" leave with the Dow, Anthropic
+# and GTA VI stories; "0.4%" and "3 deals" are the EU-UK summit's
+# dek figures, "72nd" the NATO session's, "$92.22" the oil brief's.
+SINGLE_FIGURES = ("298,676", "146*", "317/6", "51\u201348", "1,070",
+                  "0.4%", "3 deals", "72nd", "$92.22")
 # Figures that must appear NOWHERE on the page (wrong measure/basis).
 BANNED_FIGURES = ("105,304", "1,084", "$1.5tn", "$1.75tn", "$1.8tn")
 # Stories the DATE CHECK excludes: none of these names may appear in
 # any story's printed text, or the check would contradict the page.
-DATECHECK_EXCLUDED = ("Voyager", "ICJ", "Crimea", "Pete Rose")
+# R3: the five displaced 19-Nov items join the check (Shenzhen
+# summit, PIF Tower strike, Dow close, Anthropic debut, GTA VI).
+# "Anthropic debut" (not bare "Anthropic") because the 20-Nov
+# day-two Anthropic verdict still prints in the index.
+DATECHECK_EXCLUDED = ("Voyager", "ICJ", "Crimea", "Pete Rose",
+                      "Shenzhen", "PIF Tower", "Dow", "Anthropic debut",
+                      "GTA VI")
 # Card deks whose story has no numeric key fact (date alone carries it).
 NO_DIGIT_DEKS = {"A14", "A22", "A29", "A55"}
 

@@ -304,6 +304,32 @@ def _flag_detail(draw, fx, fy, fw, fh, name, base):
                 sy_ = fy + 3 + r_ * max(3, (4 * stripe - 4) // 4)
                 draw.ellipse([sx_ - 1, sy_ - 1, sx_ + 1, sy_ + 1],
                              fill=(245, 245, 245))
+    elif name == "EU":
+        # R3: EU circle of stars - blue field, twelve gold dots
+        # in a ring. At flag size the ring reads as the EU emblem.
+        draw.rectangle([fx, fy, fx + fw, fy + fh], fill=(0, 51, 153))
+        ccx, ccy = fx + fw // 2, fy + fh // 2
+        rad = max(4, min(fw, fh) // 2 - 5)
+        for k in range(12):
+            ang = math.pi * 2 * k / 12 - math.pi / 2
+            sx_ = int(ccx + rad * math.cos(ang))
+            sy_ = int(ccy + rad * math.sin(ang) * 0.9)
+            draw.ellipse([sx_ - 1, sy_ - 1, sx_ + 1, sy_ + 1],
+                         fill=(255, 204, 0))
+    elif name == "UK":
+        # R3: simplified Union Jack - blue field, white saltire
+        # and cross, red cross over them.
+        draw.rectangle([fx, fy, fx + fw, fy + fh], fill=(0, 36, 125))
+        draw.line([fx, fy, fx + fw, fy + fh], fill=(240, 240, 240), width=3)
+        draw.line([fx + fw, fy, fx, fy + fh], fill=(240, 240, 240), width=3)
+        draw.line([fx + fw // 2, fy, fx + fw // 2, fy + fh],
+                  fill=(240, 240, 240), width=6)
+        draw.line([fx, fy + fh // 2, fx + fw, fy + fh // 2],
+                  fill=(240, 240, 240), width=6)
+        draw.line([fx + fw // 2, fy, fx + fw // 2, fy + fh],
+                  fill=(200, 16, 46), width=2)
+        draw.line([fx, fy + fh // 2, fx + fw, fy + fh // 2],
+                  fill=(200, 16, 46), width=2)
 
 
 def paint_summit(draw, x, y, w, h, spec):
@@ -311,9 +337,15 @@ def paint_summit(draw, x, y, w, h, spec):
     draw.rectangle([x, y, x + w, y + int(h * 0.62)], fill=(104, 110, 128))
     flags = spec.get("flags") or [["CHINA", [178, 34, 34]], ["RUSSIA", [52, 84, 160]],
                                   ["USA", [60, 59, 110]]]
-    names = ["XI", "PUTIN", "TRUMP"]
-    hair = [(18, 18, 18), (168, 168, 168), (232, 190, 90)]
-    suits = [(30, 34, 52), (52, 40, 40), (28, 44, 84)]
+    # R3: names, hair and suits come from the spec so the same
+    # three-leader staging serves another summit (EU-UK: von der
+    # Leyen, Costa, Burnham). Defaults keep the Shenzhen staging.
+    names = spec.get("names") or ["XI", "PUTIN", "TRUMP"]
+    # JSON carries colours as lists; PIL needs tuples.
+    hair = [tuple(c) for c in
+            (spec.get("hair") or [(18, 18, 18), (168, 168, 168), (232, 190, 90)])]
+    suits = [tuple(c) for c in
+             (spec.get("suits") or [(30, 34, 52), (52, 40, 40), (28, 44, 84)])]
     skin = (232, 192, 158)
     xs = [x + int(w * f) for f in (0.20, 0.50, 0.80)]
     fw, fh = int(w * 0.17), int(h * 0.26)
@@ -324,10 +356,11 @@ def paint_summit(draw, x, y, w, h, spec):
         # chip - the round-6 cuff/chip collision cannot recur.
     table_y = y + int(h * 0.70)
     head_top = y + int(h * 0.40)
-    # Round 7: Xi's reaching arm, drawn before the figures so
-    # Putin's torso covers its middle stretch - the arm reads as
-    # passing behind Putin toward the clasp. Two segments (a bent
-    # elbow in the open wall), in Xi's suit colour.
+    # Round 7: the left figure's reaching arm, drawn before the
+    # figures so the middle figure's torso covers its middle
+    # stretch - the arm reads as passing behind the middle figure
+    # toward the clasp. Two segments (a bent elbow in the open
+    # wall), in the left figure's suit colour.
     hx = (xs[1] + xs[2]) // 2
     hy = table_y - int(h * 0.30)
     hx2 = hx - 10  # clasp centre, shifted west: see the cuff note below
@@ -345,10 +378,10 @@ def paint_summit(draw, x, y, w, h, spec):
     # clasp centre scaled ~0.58), with thinner arms (13 -> 8) and
     # narrower cuffs, so the three faces/shoulders and the flags +
     # nameplates carry the scene instead of one fleshy blob. The
-    # right cuff runs under the USA chip's left edge, but the chips
-    # are drawn after this block, so they always win.
-    skin_a = skin                    # Putin's hand, from the left
-    skin_b = (206, 164, 124)         # Trump's hand, from the right
+    # right cuff runs under the right flag's chip's left edge, but
+    # the chips are drawn after this block, so they always win.
+    skin_a = skin                    # middle figure's hand, from the left
+    skin_b = (206, 164, 124)         # right figure's hand, from the right
     seam = (128, 90, 58)
     # Bent arms: table line -> elbow -> cuff.
     draw.line([xs[1] + 16, table_y - 4, hx2 - 100, table_y - 20],
@@ -379,8 +412,8 @@ def paint_summit(draw, x, y, w, h, spec):
                   (hx2 - 8, hy - 5)], fill=skin_a, outline=seam)
     draw.polygon([(hx2 + 15, hy - 7), (hx2 + 3, hy - 20), (hx2 - 3, hy - 17),
                   (hx2 + 8, hy - 5)], fill=skin_b, outline=seam)
-    # Xi's hand on the clasp's left edge, in a third skin tone, so
-    # three hands converge on the one contact point.
+    # The left figure's hand on the clasp's left edge, in a third
+    # skin tone, so three hands converge on the one contact point.
     draw.ellipse([hx2 - 41, hy - 3, hx2 - 27, hy + 6], fill=(220, 178, 140),
                  outline=seam, width=2)
     for fx in (hx2 - 37, hx2 - 33):
@@ -540,12 +573,14 @@ def paint_chip(draw, x, y, w, h, spec):
         dx = x + int(w * 0.86) + 3 + rng.below(int(w * 0.08))
         dy = y + int(h * 0.20) + 3 + rng.below(int(h * 0.30))
         draw.rectangle([dx, dy, dx + 2, dy + 2], fill=(120, 230, 200))
-    # Round 7: the day's move lettered legibly in the art itself -
-    # the scene's only downward evidence used to be a ~20 px chart
-    # inset in another card; here the -4% sits in the open wall
-    # space at the top right, clear of the NVIDIA chip (top left).
-    dfnt = ImageFont.truetype(SANS_BOLD, 14)
-    draw.text((x + int(w * 0.80), y + 5), "−4%", font=dfnt, fill=(255, 96, 72))
+    # R3: the day's move lettered in the art itself is drawn only
+    # when the spec carries a figure. The old hard-coded "-4%"
+    # belonged to a different story and would be an unanchored
+    # figure on any other chip story (Nvidia carries no figure).
+    if spec.get("figure"):
+        dfnt = ImageFont.truetype(SANS_BOLD, 14)
+        draw.text((x + int(w * 0.80), y + 5), spec["figure"], font=dfnt,
+                  fill=(255, 96, 72))
     label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
 
 
@@ -708,12 +743,16 @@ def paint_tents(draw, x, y, w, h, spec):
 def paint_conference(draw, x, y, w, h, spec):
     # Climate-conference chamber: panelled wall, a backdrop banner,
     # five delegates seated at one long table with small flags.
+    # R3: banner and placard come from the spec (COP31 / "144→80"
+    # by default) so the same chamber serves another forum (SCO).
+    banner = spec.get("banner", "COP31")
+    placard = spec.get("placard", "144\u219280")
     draw.rectangle([x, y, x + w, y + h], fill=(208, 202, 188))
     draw.rectangle([x + int(w * 0.30), y + int(h * 0.08), x + int(w * 0.70),
                     y + int(h * 0.34)], fill=(70, 96, 84))
     fnt = ImageFont.truetype(SANS_BOLD, 11)
-    draw.text((x + w // 2 - width_of("COP31", fnt) // 2, y + int(h * 0.16)),
-              "COP31", font=fnt, fill=(240, 238, 228))
+    draw.text((x + w // 2 - width_of(banner, fnt) // 2, y + int(h * 0.16)),
+              banner, font=fnt, fill=(240, 238, 228))
     table_y = y + int(h * 0.68)
     skin = (232, 192, 158)
     suits = [(52, 58, 74), (84, 60, 52), (44, 66, 58), (66, 52, 76), (58, 62, 50)]
@@ -732,13 +771,14 @@ def paint_conference(draw, x, y, w, h, spec):
                    fill=(146, 112, 72))
     # R2: the placard carries "144→80" - the draft-cut figure the
     # dek already states. The old "35%" appeared nowhere on the
-    # page and was an unanchored figure.
+    # page and was an unanchored figure. R3: the placard text is
+    # spec-driven; other forums pass their own label ("SCO").
     pfnt = ImageFont.truetype(SANS_BOLD, 12)
-    ptw = width_of("144\u219280", pfnt)
+    ptw = width_of(placard, pfnt)
     pcx = x + w // 2
     draw.rectangle([pcx - ptw // 2 - 6, table_y + 6, pcx + ptw // 2 + 6,
                     table_y + 23], fill=(24, 30, 46))
-    draw.text((pcx - ptw // 2, table_y + 9), "144\u219280", font=pfnt,
+    draw.text((pcx - ptw // 2, table_y + 9), placard, font=pfnt,
               fill=(244, 196, 84))
 
 
@@ -1081,8 +1121,76 @@ def paint_stumps(draw, x, y, w, h, spec):
     label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
 
 
+def paint_rescue(draw, x, y, w, h, spec):
+    # R3: night rescue at sea (Senegal boat search). Dark sky and
+    # sea, one orange rescue boat with a white cabin and a mast,
+    # its searchlight beam sweeping up-right, a small dinghy, a
+    # life-ring, and wave arcs. One boat, one beam, one action -
+    # drawn to decode at 480 px without the headline.
+    draw.rectangle([x, y, x + w, y + h], fill=(34, 48, 76))
+    rng = Lcg(71)
+    for _ in range(14):
+        sx = x + 3 + rng.below(w - 6)
+        sy = y + 3 + rng.below(int(h * 0.38))
+        draw.rectangle([sx, sy, sx + 1, sy + 1], fill=(200, 205, 220))
+    # Low moon, top right.
+    mx0, my0 = x + int(w * 0.84), y + int(h * 0.12)
+    draw.ellipse([mx0 - 8, my0 - 8, mx0 + 8, my0 + 8], fill=(238, 232, 200))
+    sea_y = y + int(h * 0.52)
+    draw.rectangle([x, sea_y, x + w, y + h], fill=(26, 66, 96))
+    draw.rectangle([x, sea_y, x + w, sea_y + 3], fill=(120, 150, 180))
+    # The rescue boat: orange hull, white cabin, mast with a lamp.
+    bx0 = x + int(w * 0.08)
+    hull_y = sea_y + int(h * 0.10)
+    hull_w = int(w * 0.42)
+    draw.polygon([(bx0, hull_y), (bx0 + hull_w, hull_y),
+                  (bx0 + hull_w - 8, hull_y + 14), (bx0 + 8, hull_y + 14)],
+                 fill=(220, 110, 40))
+    draw.rectangle([bx0 + 4, hull_y + 4, bx0 + hull_w - 4, hull_y + 8],
+                   fill=(240, 238, 230))
+    cab_x = bx0 + int(hull_w * 0.30)
+    cab_y = hull_y - 20
+    draw.rectangle([cab_x, cab_y, cab_x + 34, hull_y], fill=(240, 238, 230))
+    for wx in range(cab_x + 5, cab_x + 30, 10):
+        draw.rectangle([wx, cab_y + 5, wx + 6, cab_y + 12], fill=(30, 60, 90))
+    mast_x = cab_x + 38
+    draw.line([mast_x, hull_y, mast_x, cab_y - 16], fill=(220, 220, 220), width=2)
+    # Searchlight beam: a widening pale cone from the mast lamp
+    # up to the top-right sky, clear of the moon.
+    lamp_x, lamp_y = mast_x, cab_y - 16
+    draw.ellipse([lamp_x - 4, lamp_y - 4, lamp_x + 4, lamp_y + 4],
+                 fill=(255, 240, 170))
+    draw.polygon([(lamp_x, lamp_y), (x + int(w * 0.88), y + int(h * 0.10)),
+                  (x + int(w * 0.92), y + int(h * 0.26))],
+                 fill=(240, 220, 150))
+    # One crew figure on deck, arm raised toward the beam.
+    crew_x = bx0 + int(hull_w * 0.78)
+    person(draw, crew_x, hull_y - 26, 0.85, (232, 192, 158), (30, 26, 22),
+           (220, 110, 40), tie=(220, 110, 40))
+    draw.line([crew_x + 10, hull_y - 14, crew_x + 20, hull_y - 30],
+              fill=(232, 192, 158), width=3)
+    # Life-ring floating left of the boat, and a small dinghy right.
+    rx, ry = x + int(w * 0.62), sea_y + int(h * 0.34)
+    draw.ellipse([rx - 9, ry - 9, rx + 9, ry + 9], outline=(240, 120, 40), width=4)
+    draw.ellipse([rx - 4, ry - 4, rx + 4, ry + 4], fill=(26, 66, 96))
+    dx0 = x + int(w * 0.80)
+    dy0 = sea_y + int(h * 0.26)
+    draw.polygon([(dx0, dy0), (dx0 + 26, dy0), (dx0 + 22, dy0 + 7),
+                  (dx0 + 4, dy0 + 7)], fill=(40, 44, 54))
+    draw.line([dx0 + 20, dy0, dx0 + 20, dy0 - 10], fill=(200, 200, 200), width=2)
+    # Wave arcs across the sea.
+    for wy in (sea_y + int(h * 0.16), sea_y + int(h * 0.30), y + h - 8):
+        for wx in range(x + 8, x + w - 20, 42):
+            draw.arc([wx, wy - 3, wx + 22, wy + 5], 180, 360,
+                     fill=(180, 205, 225), width=2)
+    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
+
+
 # Dotted world map: rows of land cells over a 52x20 grid (stylised -
-# continents readable, coastlines approximate).
+# continents readable, coastlines approximate). R3: Africa is
+# widened (rows 9-13) - it read as a thin spike under the wide
+# Eurasian blob; at its widest Africa is now 11 cells against
+# Eurasia's ~22, and the taper to the southern tip is gradual.
 MAP_ROWS = [
     "                                                    ",
     "     ##### ##           ##################          ",
@@ -1093,11 +1201,11 @@ MAP_ROWS = [
     "      ######              ######   ########         ",
     "       ####               #######   ######          ",
     "       ###                ########   ####           ",
-    "      ####                ########  ######          ",
-    "     ######               #######  #########        ",
-    "     ######                #####   #########        ",
-    "      ####                  ###     ##########      ",
-    "      ###                   ##       ######         ",
+    "      ####              ########### ######          ",
+    "     ######             ########## #########        ",
+    "     ######              ########  #########        ",
+    "      ####                 #####    ##########      ",
+    "      ###                  ####      ######         ",
     "       ##                                   ##      ",
     "       #                                    ##      ",
     "                                                    ",
@@ -1111,25 +1219,34 @@ MAP_ROWS = [
 # One (col, row) cell per printed story number on the 52x20 MAP_ROWS
 # grid, fx=(col+0.5)/52, fy=(row+0.5)/20. Every centre sits on a land
 # cell (verified by computation, not by eye); min pairwise centre
-# separation 26.2 px on the 340-wide map, so no two r=12 pins cover
-# each other. The two New York stories (Dow, Anthropic) are offset
-# within the north-east US landmass; NZ and Fiji cells were added to
+# separation 25.3 px on the 340-wide map, so no two r=12 pins cover
+# each other (r=12 circles touch at 24 px). The two Washington
+# stories (Senate vote, Nvidia report) are offset within the US
+# landmass; NZ and Fiji cells were added to
 # MAP_ROWS rows 12/14/15 for this edition.
+# R3: pins 1/3/5/6/7 re-derived for the swapped stories (Brussels,
+# Dakar, Washington, Berlin, Delhi); pins 4/10/14 moved within
+# Europe so London, Brussels, Berlin, Zurich and Antalya no longer
+# crowd (min separation now 25.3 px); Africa widened, so Dakar sits
+# on the west coast and pin 16 stays on the southern tip.
 PIN_POSITIONS = {
-    1: (42.5 / 52, 5.5 / 20),    # Shenzhen (trilateral)
+    1: (24.5 / 52, 1.5 / 20),    # Brussels (EU-UK summit)
     2: (38.5 / 52, 6.5 / 20),    # Gopalpur, Odisha (Akvan landfall)
-    3: (31.5 / 52, 6.5 / 20),    # Riyadh (PIF Tower)
-    4: (29.5 / 52, 4.5 / 20),    # Antalya (COP31)
-    5: (7.5 / 52, 2.5 / 20),     # New York (Dow)
-    6: (10.5 / 52, 4.5 / 20),    # New York (Anthropic)
-    7: (8.5 / 52, 6.5 / 20),     # Miami / Leonida (GTA VI)
+    3: (25.5 / 52, 9.5 / 20),    # Dakar (Senegal boat search)
+    4: (27.5 / 52, 4.5 / 20),    # Antalya (COP31) - R3: moved west
+    # from (29.5/52, 4.5/20), mid-blob, to Turkey's west edge
+    5: (8.5 / 52, 4.5 / 20),     # Washington DC (Nvidia report)
+    6: (28.5 / 52, 1.5 / 20),    # Berlin (NATO assembly)
+    7: (35.5 / 52, 4.5 / 20),    # Delhi (SCO forum)
     8: (45.5 / 52, 15.5 / 20),   # Wellington (NZ v India)
     9: (15.5 / 52, 3.5 / 20),    # Washington DC (Senate vote)
-    10: (28.5 / 52, 1.5 / 20),   # Zurich (FIFA)
+    10: (32.5 / 52, 2.5 / 20),   # Zurich (FIFA) - R3: moved from
+    # (28.5/52, 1.5/20), the top edge, into the Europe landmass
     11: (11.5 / 52, 2.5 / 20),   # Cincinnati (Fiona the hippo)
     12: (44.5 / 52, 12.5 / 20),  # Fiji (El Nino drought)
     13: (38.5 / 52, 10.5 / 20),  # Jakarta (Indonesia law)
-    14: (24.5 / 52, 3.5 / 20),   # London (BAE jobs)
+    14: (23.5 / 52, 3.5 / 20),   # London (BAE jobs) - R3: moved
+    # from (24.5/52, 3.5/20) so Brussels clears it
     15: (33.5 / 52, 8.5 / 20),   # Taiz, Yemen (airstrikes)
     16: (28.5 / 52, 13.5 / 20),  # South Africa (Test win) - R2: moved
     # from (27.5/52, 11.5/20), mid-Africa, to the southern tip
@@ -1225,6 +1342,7 @@ PAINTERS = {
     "conference": paint_conference,
     "gta_skyline": paint_gta_skyline,
     "tower_strike": paint_tower_strike,
+    "rescue": paint_rescue,
     "cricket": paint_cricket,
     "stumps": paint_stumps,
     "football": paint_football,
