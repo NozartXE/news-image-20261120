@@ -5,51 +5,22 @@ otherwise returns the stats dict the layout prints from. The rules
 encode the C2 standard as judged for this edition:
 
 - the printed total is set by the VERIFIED list, never the reverse:
-  stories == printed_total, exactly 2 heroes + 10 cards = 12
+  stories == printed_total, >= 43, exactly 4 heroes + 12 cards = 16
   illustrated, the rest index;
 - numbering continuous 1..N in page order (heroes, cards, index);
 - timeline slots carry clock times ONLY where a time is wire-sourced
-  (Akvan noon landfall); every other slot is a sequence label. R4:
-  the six slots sit directly above card row 1 and must name those
-  six cards in left-to-right order, so each label sits over its own
-  story's image (R3 seat 2: the old equal-width strip sat each label
-  over the wrong hero image);
+  (Akvan noon landfall); every other slot is a sequence label;
 - index stories come from Section A only (20-Nov news); Section B
   stories appear only as heroes/cards with a "19 NOV" kicker, and
   Section C never appears anywhere;
 - every hero/card dek carries its date; key figures are printed once
   and on one stated basis (Akvan ~298,676 evacuated, EU-UK +0.4%,
   NATO 72nd session, Brent $92.22);
-- figures lettered inside a scene (COP31 draft "144->80", cricket
-  "146*") must also appear in that story's headline or dek, so no
-  in-scene figure is orphaned;
 - the DATE CHECK names only stories NOT printed on the page, so it
   can never contradict a hero or card kicker. R3: it names nine
   exclusions, including the five 19-Nov items displaced from the
   illustrated slots (Shenzhen summit, PIF Tower, Dow close,
   Anthropic debut, GTA VI).
-
-R4 RE-DERIVATION (class move, 2026-11-20): the kit does NOT mandate
-a story count. requirements.json was parsed in full (56 checks):
-none constrains story, scene or illustration counts (the word
-"story" appears only in transcript/grading checks). The >=43-story
-gate was OUR validator, derived from panel rulings (R1: the 12-13
-scene cap rose to 16 because live #1 proved 170-wide card scenes
-count). Both R3 panel seats now rule the 46-story / 16-equal-card
-architecture caps at ~98.0-98.3% and that top 10 needs the class
-move (fewer, larger scenes + real focal hierarchy), and the live
-board itself proves the smaller shape: at the R3 panel the fresh
-#1 (kho22) printed 36 stories and the fresh #50 (amber-wren-76)
-33 stories, both with photographic-scale heroes. The gate is
-therefore re-derived for the class-move layout: MIN_STORIES 43 ->
-36, heroes 4 -> 2 (491 px wide each, real size dominance), cards
-12 -> 10 (row 1: six 157 px cards; row 2: four 240 px cards),
-illustrated 16 -> 12, index 30 -> 24 (3 cols x 8 rows, type 10 px
--> 12 px, measured: every brief fits in 2 lines at 12 px with the
-four longest briefs shortened without changing their facts).
-No other gate is weakened: numbering, timeline sourced-time rule,
-Section A-only index, single-figure rule, DATE CHECK
-non-contradiction and banned figures are all unchanged.
 """
 
 import re
@@ -57,10 +28,10 @@ import re
 REGION_ORDER = ["Asia", "Middle East", "Europe", "North America",
                 "South America", "Africa", "Oceania", "Global"]
 
-MIN_STORIES = 36
-HEROES = 2
-CARDS = 10
-ILLUSTRATED = 12
+MIN_STORIES = 43
+HEROES = 4
+CARDS = 12
+ILLUSTRATED = 16
 
 # Clock-time patterns a timeline slot may never carry unless the slot
 # is flagged sourced_time (the only sourced time is Akvan's noon).
@@ -71,15 +42,10 @@ DATE_TOKEN_RE = re.compile(r"\b(?:19|20) NOV\b|REPORTED 20 NOV", re.I)
 # R3: "1,101", "$1.3tn" and "$1.84bn" leave with the Dow, Anthropic
 # and GTA VI stories; "0.4%" and "3 deals" are the EU-UK summit's
 # dek figures, "72nd" the NATO session's, "$92.22" the oil brief's.
-# R4: all nine survive the 46 -> 36 cut (every figure's story kept).
 SINGLE_FIGURES = ("298,676", "146*", "317/6", "51\u201348", "1,070",
                   "0.4%", "3 deals", "72nd", "$92.22")
 # Figures that must appear NOWHERE on the page (wrong measure/basis).
 BANNED_FIGURES = ("105,304", "1,084", "$1.5tn", "$1.75tn", "$1.8tn")
-# Figures lettered inside a scene must also appear in that story's
-# headline or dek (R4): COP31's draft "144->80" is in its dek,
-# cricket's "146*" chip is in its headline.
-IN_SCENE_FIGURES = ("144\u219280", "146*")
 # Stories the DATE CHECK excludes: none of these names may appear in
 # any story's printed text, or the check would contradict the page.
 # R3: the five displaced 19-Nov items join the check (Shenzhen
@@ -90,13 +56,10 @@ DATECHECK_EXCLUDED = ("Voyager", "ICJ", "Crimea", "Pete Rose",
                       "Shenzhen", "PIF Tower", "Dow", "Anthropic debut",
                       "GTA VI")
 # Card deks whose story has no numeric key fact (date alone carries it).
-NO_DIGIT_DEKS = {"A14"}
+NO_DIGIT_DEKS = {"A14", "A22", "A29", "A55"}
 
-# Index brief geometry (R4): 3 cols in the 642 px index width,
-# 8 rows of 28 px, 12 px bold type. Text width 177 px = 214 px col
-# - 6 px gutter - 21 px widest number badge ("36.") - 10 px gap.
-INDEX_FONT_SIZE = 12
-INDEX_TEXT_W = 177
+# Index brief geometry: 3 cols in the 642 px index width, 24 px rows.
+INDEX_TEXT_W = 186
 
 
 def _printed_texts(story):
@@ -199,14 +162,14 @@ def validate(content):
                 if not any(ch.isdigit() for ch in dek):
                     raise ValueError("story %s: card/hero dek carries no figure"
                                      % story.get("id"))
-            # Headline/dek fit: hero 491 px, card 157 px (narrow row).
-            w = 491 if story["tier"] == "hero" else 157
+            # Headline/dek fit: hero 240 px, card 157 px.
+            w = 240 if story["tier"] == "hero" else 157
             hfnt = tu.font(tu.SERIF_BOLD if story["tier"] == "hero" else tu.SANS_BOLD,
-                           19 if story["tier"] == "hero" else 13)
+                           17 if story["tier"] == "hero" else 13)
             if len(tu.wrap(story["headline"], hfnt, w)) > 2:
                 raise ValueError("story %s: headline wraps past 2 lines"
                                  % story.get("id"))
-            dfnt = tu.font(tu.SANS, 13 if story["tier"] == "hero" else 11)
+            dfnt = tu.font(tu.SANS, 12 if story["tier"] == "hero" else 11)
             dlines = tu.wrap(dek, dfnt, w)
             if len(dlines) > (2 if story["tier"] == "hero" else 1):
                 # Card deks may shrink to 9 px; re-check at the floor.
@@ -226,10 +189,10 @@ def validate(content):
             if brief[-1] not in ".!?":
                 raise ValueError("story %s: brief %r does not end with "
                                  "terminal punctuation" % (story.get("id"), brief))
-            bfnt = tu.font(tu.SANS_BOLD, INDEX_FONT_SIZE)
+            bfnt = tu.font(tu.SANS_BOLD, 10)
             if len(tu.wrap(brief, bfnt, INDEX_TEXT_W)) > 2:
                 raise ValueError("story %s: index brief wraps past 2 lines "
-                                 "at %d px" % (story.get("id"), INDEX_FONT_SIZE))
+                                 "at 10 px" % story.get("id"))
 
     expected = numbering(stories)
     printed = [s.get("num") for s in stories]
@@ -259,14 +222,6 @@ def validate(content):
         if re.search(r"\bnoon\b", text, re.I) and not slot.get("sourced_time"):
             raise ValueError("timeline slot %r uses 'noon' without a sourced "
                              "time" % (slot.get("label"),))
-    # R4: the six slots sit directly above card row 1 and must name
-    # those six cards in left-to-right order, so every label sits
-    # over its own story's image.
-    card_nums = [expected[s["id"]] for s in cards[:6]]
-    slot_nums = [slot.get("story_num") for slot in timeline]
-    if slot_nums != card_nums:
-        raise ValueError("timeline slots %r do not name card row 1 %r "
-                         "in order" % (slot_nums, card_nums))
 
     # Figures: each single-use figure exactly once; banned figures never.
     all_text = "\n".join(t for s in stories for t in _printed_texts(s))
@@ -283,14 +238,6 @@ def validate(content):
                   if "$1.84bn" in (s.get("dek", "") or "")]
         if not holder or "EST" not in (holder[0].get("dek", "") or ""):
             raise ValueError("GTA VI $1.84bn printed without ESTIMATE label")
-    # In-scene figures must be anchored in their story's headline/dek.
-    for fig in IN_SCENE_FIGURES:
-        holders = [s for s in stories
-                   if fig in (s.get("headline", "") or "")
-                   or fig in (s.get("dek", "") or "")]
-        if not holders:
-            raise ValueError("in-scene figure %r is orphaned: no story "
-                             "prints it in headline or dek" % fig)
 
     # DATE CHECK consistency: excluded names appear nowhere on the page.
     for name in DATECHECK_EXCLUDED:
@@ -312,3 +259,8 @@ def validate(content):
         "regions": len(regions),
         "region_counts": counts,
     }
+
+
+def scope_line(stats):
+    return "%d STORIES \u00b7 %d REGIONS \u00b7 %d ILLUSTRATED" % (
+        stats["stories"], stats["regions"], stats["illustrated"])

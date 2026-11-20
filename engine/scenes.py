@@ -356,24 +356,20 @@ def paint_summit(draw, x, y, w, h, spec):
         # chip - the round-6 cuff/chip collision cannot recur.
     table_y = y + int(h * 0.70)
     head_top = y + int(h * 0.40)
-    # R4: the summit now fills a 491 px hero, not a 240 px one, so
-    # the figures scale with the box height (1.5 at h=140 -> 1.8 at
-    # h=168) and the left figure's reaching arm bends at the
-    # midpoint between the left and middle figures, not at a fixed
-    # +185 px that used to read as one long bar across the table.
-    # (At 240 px wide the old elbow sat past the clasp; no story
-    # uses this painter at that width any more.)
-    fig_scale = 1.5 * h / 140.0
+    # Round 7: the left figure's reaching arm, drawn before the
+    # figures so the middle figure's torso covers its middle
+    # stretch - the arm reads as passing behind the middle figure
+    # toward the clasp. Two segments (a bent elbow in the open
+    # wall), in the left figure's suit colour.
     hx = (xs[1] + xs[2]) // 2
     hy = table_y - int(h * 0.30)
     hx2 = hx - 10  # clasp centre, shifted west: see the cuff note below
-    elbow01 = (xs[0] + xs[1]) // 2 + 10
-    draw.line([xs[0] + 16, table_y - 5, elbow01, table_y - 28],
+    draw.line([xs[0] + 16, table_y - 5, xs[0] + 185, table_y - 28],
               fill=suits[0], width=7)
-    draw.line([elbow01, table_y - 28, hx2 - 38, hy + 2],
+    draw.line([xs[0] + 185, table_y - 28, hx2 - 38, hy + 2],
               fill=suits[0], width=7)
     for i, cx in enumerate(xs):
-        person(draw, cx, head_top, fig_scale, skin, hair[i], suits[i])
+        person(draw, cx, head_top, 1.5, skin, hair[i], suits[i])
         # Microphone angled in from the table.
         draw.line([cx + 18, table_y, cx + 7, head_top + 30], fill=(16, 16, 18), width=2)
         draw.ellipse([cx + 4, head_top + 25, cx + 10, head_top + 31], fill=(16, 16, 18))
@@ -1125,144 +1121,6 @@ def paint_stumps(draw, x, y, w, h, spec):
     label_chip(draw, x, y, w, h, spec.get("label", ""), align="tl")
 
 
-def paint_cop31(draw, x, y, w, h, spec):
-    # R4: COP31 closing day - a globe-dominant negotiation scene,
-    # deliberately unlike paint_conference's five-delegates-at-a-table
-    # (that painter now serves no story). A huge Earth disc fills
-    # the top of the frame, a green COP31 ribbon crosses it, and a
-    # long table at the bottom carries the draft document stack
-    # lettered with the dek's figure "144->80". Three delegates sit
-    # low at the table's ends, small against the globe.
-    draw.rectangle([x, y, x + w, y + h], fill=(58, 96, 84))
-    # Globe: big blue disc, centre-top, with green land blobs.
-    gx, gy = x + w // 2, y + int(h * 0.34)
-    gr = int(min(w, h) * 0.34)
-    draw.ellipse([gx - gr, gy - gr, gx + gr, gy + gr], fill=(52, 110, 168))
-    draw.ellipse([gx - int(gr * 0.55), gy - int(gr * 0.45),
-                  gx - int(gr * 0.05), gy + int(gr * 0.05)], fill=(84, 150, 84))
-    draw.ellipse([gx + int(gr * 0.10), gy + int(gr * 0.10),
-                  gx + int(gr * 0.60), gy + int(gr * 0.55)], fill=(84, 150, 84))
-    draw.ellipse([gx - gr, gy - gr, gx + gr, gy + gr], outline=(240, 238, 228), width=2)
-    # Green ribbon banner across the globe's middle.
-    draw.rectangle([x + int(w * 0.06), gy - 9, x + int(w * 0.94), gy + 9],
-                   fill=(24, 60, 44))
-    fnt = ImageFont.truetype(SANS_BOLD, 12)
-    draw.text((x + w // 2 - width_of("COP31", fnt) // 2, gy - 7), "COP31",
-              font=fnt, fill=(244, 196, 84))
-    # Long table along the bottom.
-    table_y = y + int(h * 0.74)
-    draw.rectangle([x + int(w * 0.03), table_y, x + int(w * 0.97), y + h - 2],
-                   fill=(110, 84, 56))
-    draw.rectangle([x + int(w * 0.03), table_y, x + int(w * 0.97), table_y + 4],
-                   fill=(146, 112, 72))
-    # Draft document stack, centre: white pages with the dek's
-    # cut figure lettered on the top page.
-    dx0 = x + w // 2 - 22
-    draw.rectangle([dx0 + 4, table_y - 14, dx0 + 40, table_y - 4],
-                   fill=(228, 226, 218))
-    draw.rectangle([dx0, table_y - 10, dx0 + 36, table_y],
-                   fill=(246, 244, 238))
-    pfnt = ImageFont.truetype(SANS_BOLD, 10)
-    draw.text((dx0 + 3, table_y - 9), "144\u219280", font=pfnt, fill=(168, 38, 32))
-    # Three delegates, small, at the table's ends and one side.
-    for fx, suit, hair in ((0.10, (52, 58, 74), (30, 28, 26)),
-                           (0.88, (84, 60, 52), (200, 200, 200))):
-        person(draw, x + int(w * fx), table_y - 26, 0.8,
-               (232, 192, 158), hair, suit, tie=(240, 238, 230))
-
-
-def paint_nato(draw, x, y, w, h, spec):
-    # R4: NATO assembly - a navy emblem hall, deliberately unlike
-    # paint_ballot's tiered voting chamber (that painter now serves
-    # only the Senate). A large white four-point compass star on a
-    # dark-blue wall, "NATO" lettered beneath it, one speaker at a
-    # podium below, and a row of small member flags along the bottom.
-    draw.rectangle([x, y, x + w, y + h], fill=(28, 44, 92))
-    draw.rectangle([x, y, x + w, y + int(h * 0.14)], fill=(20, 34, 74))
-    # Compass star: four long points, centre disc, thin ring.
-    cx, cy = x + w // 2, y + int(h * 0.36)
-    R, r = int(h * 0.26), int(h * 0.07)
-    star = [(cx, cy - R), (cx + r, cy - r), (cx + R, cy), (cx + r, cy + r),
-            (cx, cy + R), (cx - r, cy + r), (cx - R, cy), (cx - r, cy - r)]
-    draw.polygon(star, fill=(238, 238, 230))
-    draw.ellipse([cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3],
-                 outline=(238, 238, 230), width=2)
-    # No lettering under the star: the speaker's head sits there,
-    # and the "NATO" label chip (top-right) already names the scene.
-    # Speaker at a podium, centre-bottom.
-    px = x + w // 2
-    person(draw, px, y + int(h * 0.58), 0.9, (232, 192, 158), (60, 56, 52),
-           (34, 38, 60), tie=(160, 36, 36))
-    draw.rectangle([px - 20, y + int(h * 0.78), px + 20, y + h - 12],
-                   fill=(70, 50, 34))
-    draw.rectangle([px - 20, y + int(h * 0.78), px + 20, y + int(h * 0.80) + 2],
-                   fill=(96, 72, 46))
-    # Row of small member flags along the very bottom.
-    rng = Lcg(83)
-    tones = [(178, 44, 52), (240, 240, 240), (52, 84, 168), (244, 196, 84),
-             (60, 120, 70), (150, 60, 110)]
-    fx = x + 4
-    while fx < x + w - 12:
-        draw.rectangle([fx, y + h - 10, fx + 9, y + h - 2],
-                       fill=tones[rng.below(len(tones))])
-        fx += 12
-    label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
-
-
-def paint_sco(draw, x, y, w, h, spec):
-    # R4: SCO Civilisations Dialogue Forum - a sandstone arch hall,
-    # deliberately unlike paint_conference's straight table row. A
-    # large round arch frames the stage, "SCO" hangs on a banner
-    # inside it, two glowing lanterns flank the arch, a speaker
-    # stands at a lectern with an open book, and four delegates sit
-    # in a semicircle arc facing the stage.
-    draw.rectangle([x, y, x + w, y + h], fill=(186, 148, 104))
-    # Arch: sandstone wall, dark arch opening, pale keystone band.
-    ax0, ax1 = x + int(w * 0.28), x + int(w * 0.72)
-    ay0 = y + int(h * 0.10)
-    draw.rectangle([ax0, ay0 + int(h * 0.22), ax1, y + int(h * 0.72)],
-                   fill=(52, 44, 40))
-    draw.pieslice([ax0, ay0, ax1, ay0 + int(h * 0.44)], 180, 360,
-                  fill=(52, 44, 40))
-    draw.arc([ax0, ay0, ax1, ay0 + int(h * 0.44)], 180, 360,
-             fill=(240, 232, 210), width=3)
-    draw.rectangle([ax0 - 3, ay0 + int(h * 0.22), ax0 + 3, y + int(h * 0.72)],
-                   fill=(240, 232, 210))
-    draw.rectangle([ax1 - 3, ay0 + int(h * 0.22), ax1 + 3, y + int(h * 0.72)],
-                   fill=(240, 232, 210))
-    # Hanging SCO banner inside the arch.
-    bx0, bx1 = x + int(w * 0.40), x + int(w * 0.60)
-    by0 = ay0 + int(h * 0.10)
-    draw.rectangle([bx0, by0, bx1, by0 + 18], fill=(24, 60, 44))
-    fnt = ImageFont.truetype(SANS_BOLD, 11)
-    draw.text((x + w // 2 - width_of("SCO", fnt) // 2, by0 + 3), "SCO",
-              font=fnt, fill=(244, 196, 84))
-    # Two lanterns flanking the arch, glowing amber.
-    for lx in (x + int(w * 0.16), x + int(w * 0.84)):
-        draw.line([lx, y + int(h * 0.08), lx, y + int(h * 0.22)],
-                  fill=(60, 48, 36), width=2)
-        draw.rectangle([lx - 7, y + int(h * 0.22), lx + 7, y + int(h * 0.38)],
-                       fill=(244, 176, 60), outline=(120, 80, 30))
-        draw.line([lx - 7, y + int(h * 0.30), lx + 7, y + int(h * 0.30)],
-                  fill=(120, 80, 30), width=1)
-    # Speaker at a lectern with an open book, centre stage.
-    lx2 = x + w // 2
-    person(draw, lx2, y + int(h * 0.44), 0.9, (198, 150, 110), (20, 18, 16),
-           (44, 66, 58), tie=(240, 238, 230))
-    draw.polygon([(lx2 - 12, y + int(h * 0.66)), (lx2, y + int(h * 0.62)),
-                  (lx2 + 12, y + int(h * 0.66)), (lx2, y + int(h * 0.70))],
-                 fill=(246, 244, 238), outline=(120, 110, 96))
-    draw.rectangle([lx2 - 2, y + int(h * 0.68), lx2 + 2, y + int(h * 0.80)],
-                   fill=(70, 54, 36))
-    # Four delegates in a shallow arc along the bottom, facing in.
-    for fx, suit, hair in ((0.08, (52, 58, 74), (30, 28, 26)),
-                           (0.30, (84, 60, 52), (120, 90, 60)),
-                           (0.70, (66, 52, 76), (200, 200, 200)),
-                           (0.92, (58, 62, 50), (60, 44, 30))):
-        person(draw, x + int(w * fx), y + int(h * 0.76), 0.85,
-               (232, 192, 158), hair, suit, tie=(240, 238, 230))
-
-
 def paint_rescue(draw, x, y, w, h, spec):
     # R3: night rescue at sea (Senegal boat search). Dark sky and
     # sea, one orange rescue boat with a white cabin and a mast,
@@ -1348,49 +1206,51 @@ MAP_ROWS = [
     "     ######              ########  #########        ",
     "      ####                 #####    ##########      ",
     "      ###                  ####      ######         ",
-    "       ##                                  ####      ",
-    "       #                                   ####      ",
-    "                                            ##       ",
+    "       ##                                   ##      ",
+    "       #                                    ##      ",
+    "                                                    ",
     "                                                    ",
     "                                                    ",
     "                                                    ",
 ]
 
-# Pin positions, NI20: RE-DERIVED for this edition's illustrated
+# Pin positions, NI20: RE-DERIVED for this edition's 16 illustrated
 # stories (the NI19 table is wrong for NI20 and is NOT reused).
 # One (col, row) cell per printed story number on the 52x20 MAP_ROWS
-# grid, fx=(col+0.5)/52, fy=(row+0.5)/20.
-# R4 (12 pins, map 340x224): re-derived for the renumbering AND
-# re-spread in the Europe cluster - measured, not eyeballed (see
-# r4-build-note.md): every centre on a land cell, min pairwise
-# separation 26.0 px (r=12 circles touch at 24.0), zero pin x label
-# collisions. R3's table measured the same way: all 16 centres on
-# land, min separation 25.3 px, zero collisions - seat 2 was right
-# about centres; seat 1's reading came from the pin DISCS (r=12):
-# Wellington's disc was only 48% land, so it read as floating in
-# the sea. R4 enlarges the NZ blob (rows 14-16) so Wellington's
-# disc is 90% land; the Jakarta pin is gone with its story.
+# grid, fx=(col+0.5)/52, fy=(row+0.5)/20. Every centre sits on a land
+# cell (verified by computation, not by eye); min pairwise centre
+# separation 25.3 px on the 340-wide map, so no two r=12 pins cover
+# each other (r=12 circles touch at 24 px). The two Washington
+# stories (Senate vote, Nvidia report) are offset within the US
+# landmass; NZ and Fiji cells were added to
+# MAP_ROWS rows 12/14/15 for this edition.
+# R3: pins 1/3/5/6/7 re-derived for the swapped stories (Brussels,
+# Dakar, Washington, Berlin, Delhi); pins 4/10/14 moved within
+# Europe so London, Brussels, Berlin, Zurich and Antalya no longer
+# crowd (min separation now 25.3 px); Africa widened, so Dakar sits
+# on the west coast and pin 16 stays on the southern tip.
 PIN_POSITIONS = {
     1: (24.5 / 52, 1.5 / 20),    # Brussels (EU-UK summit)
     2: (38.5 / 52, 6.5 / 20),    # Gopalpur, Odisha (Akvan landfall)
     3: (25.5 / 52, 9.5 / 20),    # Dakar (Senegal boat search)
-    4: (29.5 / 52, 1.5 / 20),    # Berlin (NATO assembly) - R4: east
-    # from (28.5/52, 1.5/20) to clear Brussels and Zurich
-    5: (28.5 / 52, 5.5 / 20),    # Antalya (COP31) - R4: south from
-    # (27.5/52, 4.5/20) to clear the London pin
-    6: (45.5 / 52, 15.5 / 20),   # Wellington (NZ v India)
+    4: (27.5 / 52, 4.5 / 20),    # Antalya (COP31) - R3: moved west
+    # from (29.5/52, 4.5/20), mid-blob, to Turkey's west edge
+    5: (8.5 / 52, 4.5 / 20),     # Washington DC (Nvidia report)
+    6: (28.5 / 52, 1.5 / 20),    # Berlin (NATO assembly)
     7: (35.5 / 52, 4.5 / 20),    # Delhi (SCO forum)
-    8: (14.5 / 52, 3.5 / 20),    # Washington DC (Senate vote) -
-    # R4: west from (15.5/52, 3.5/20), the blob's east edge, so
-    # the disc sits mostly on land, not over the Atlantic
-    9: (7.5 / 52, 5.5 / 20),     # Washington DC (Nvidia report) -
-    # R4: south-west from (8.5/52, 4.5/20) to clear Cincinnati
-    10: (33.5 / 52, 2.5 / 20),   # Zurich (FIFA) - R4: east from
-    # (32.5/52, 2.5/20) to clear Berlin
-    11: (10.5 / 52, 3.5 / 20),   # Cincinnati (Fiona the hippo) -
-    # R4: south from (11.5/52, 2.5/20) to clear the Senate pin
-    12: (24.5 / 52, 4.5 / 20),   # London (BAE jobs) - R4: south
-    # from (23.5/52, 3.5/20) to clear Brussels
+    8: (45.5 / 52, 15.5 / 20),   # Wellington (NZ v India)
+    9: (15.5 / 52, 3.5 / 20),    # Washington DC (Senate vote)
+    10: (32.5 / 52, 2.5 / 20),   # Zurich (FIFA) - R3: moved from
+    # (28.5/52, 1.5/20), the top edge, into the Europe landmass
+    11: (11.5 / 52, 2.5 / 20),   # Cincinnati (Fiona the hippo)
+    12: (44.5 / 52, 12.5 / 20),  # Fiji (El Nino drought)
+    13: (38.5 / 52, 10.5 / 20),  # Jakarta (Indonesia law)
+    14: (23.5 / 52, 3.5 / 20),   # London (BAE jobs) - R3: moved
+    # from (24.5/52, 3.5/20) so Brussels clears it
+    15: (33.5 / 52, 8.5 / 20),   # Taiz, Yemen (airstrikes)
+    16: (28.5 / 52, 13.5 / 20),  # South Africa (Test win) - R2: moved
+    # from (27.5/52, 11.5/20), mid-Africa, to the southern tip
+    # (row 13, cols 28-29 are the last Africa land cells).
 }
 
 
@@ -1400,18 +1260,14 @@ PIN_POSITIONS = {
 # Atlantic water (0.32, 0.24) - its old spot (0.43, 0.005) put pin
 # 10 on the final "E"; (0.30, 0.005) would collide with the
 # N. AMERICA label and (0.30, 0.13) with pin 9 (Washington) -
-# verified by computation, not by eye. R4: EUROPE moves again to
-# (0.28, 0.30) - the R3 spot's knockout rect is clipped by the
-# London pin's disc after the R4 renumbering (pin 12 at (24.5, 4.5));
-# the new spot is open Atlantic water south of the Americas blob,
-# clear of every pin (verified by computation).
+# verified by computation, not by eye.
 # AFRICA moves to open water south of the landmass (0.40, 0.80) -
 # its old spot (0.52, 0.68) would collide with pin 16's new
 # southern-tip position.
 REGION_LABELS = {
     "North America": ("N. AMERICA", 0.20, 0.02),
     "South America": ("S. AMERICA", 0.01, 0.55),
-    "Europe": ("EUROPE", 0.28, 0.30),
+    "Europe": ("EUROPE", 0.32, 0.24),
     "Africa": ("AFRICA", 0.40, 0.80),
     "Middle East": ("MIDDLE EAST", 0.70, 0.42),
     "Asia": ("ASIA", 0.78, 0.02),
@@ -1484,9 +1340,6 @@ PAINTERS = {
     "scales": paint_scales,
     "tents": paint_tents,
     "conference": paint_conference,
-    "cop31": paint_cop31,
-    "nato": paint_nato,
-    "sco": paint_sco,
     "gta_skyline": paint_gta_skyline,
     "tower_strike": paint_tower_strike,
     "rescue": paint_rescue,

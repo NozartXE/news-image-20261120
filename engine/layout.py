@@ -2,25 +2,20 @@
 
 Canvas 1024x1024, off-white paper, near-black ink, one muted red
 accent. The vertical budget is fixed by named constants and sums to
-the full canvas height (R4 class move):
+the full canvas height:
 
-    kicker 26 + date masthead 96 + hero row 264 + timeline 26
-    + card rows 304 (2 x 152) + map/index band 244
+    kicker 26 + date masthead 96 + timeline 26 + hero row 228
+    + card rows 320 (2 x 160) + map/index band 264
     + DATE CHECK 44 + footer 20 = 1024
 
-R4 geometry (was R3: 4 heroes of 240 px + 2 x 6 cards of 157 px):
-two heroes 491 px wide with 168 px scenes (real size dominance -
-nothing reads as 16 equal cards), card row 1 six 157 px cards,
-card row 2 four 240 px cards, index 3 cols x 8 rows at 12 px.
-The timeline strip sits BETWEEN the hero row and card row 1, and
-its six slots are laid out on card row 1's grid (157 px cells,
-167 px pitch), so each slot's label sits directly over its own
-story's image - the R3 strip sat each label over the wrong hero
-image because its equal-width slots did not match the 4-hero grid
-below them.
+The 20 px the timeline gives back against the C2 spec (46 -> 26)
+fund the card rows (300 -> 320), so card scenes are 157x96 instead
+of 170x84: the panel's defect-1 fix. Card width is 157, not the
+spec's 170, because six cards must fit the 992 px content width
+after 16 px margins; scene height 96 is kept as specified.
 
-Stories are numbered continuously 1..36 in page order (2 heroes,
-10 cards, 24 index). The map carries pins 1-12 for the illustrated
+Stories are numbered continuously 1..46 in page order (4 heroes,
+12 cards, 30 index). The map carries pins 1-16 for the illustrated
 stories only, at the re-derived NI20 positions in scenes.py.
 The DATE CHECK names only stories NOT printed on the page
 (Voyager 18 Nov, ICJ 19 Nov, Crimea Bridge 19 Nov, Pete Rose
@@ -34,7 +29,7 @@ from PIL import Image, ImageDraw
 
 from . import textutil as tu
 from .scenes import PAINTERS
-from .validate import INDEX_FONT_SIZE, numbering, region_counts, scope_line
+from .validate import numbering, region_counts, scope_line
 
 CANVAS = 1024
 MARGIN = 16
@@ -43,13 +38,14 @@ GUTTER = 10
 
 KICKER_H = 26
 DATE_H = 96
-HERO_H = 264
-HERO_SCENE_H = 168
 TIMELINE_H = 26
-CARD_ROW_H = 152
+HERO_H = 228
+HERO_SCENE_H = 140
+CARD_ROWS = 2
+CARD_COLS = 6
+CARD_ROW_H = 160
 CARD_SCENE_H = 96
-CARD_ROW_COUNTS = (6, 4)
-BAND_H = 244
+BAND_H = 264
 BAND_HEAD_H = 20
 MAP_W = 340
 DATECHECK_H = 44
@@ -126,56 +122,22 @@ def render(content, stats):
                    fill=INK)
     y += DATE_H
 
-    # ---- hero row: 2 wide heroes ----------------------------------------
-    # 491 px cells: the two lead stories dominate the page; scene
-    # 168 px tall, headline 19 px serif, dek 13 px.
-    hero_cell = (CONTENT_W - GUTTER) // 2
-    for i, story in enumerate(heroes):
-        cx = MARGIN + i * (hero_cell + GUTTER)
-        cw = hero_cell if i == 0 else CONTENT_W - (hero_cell + GUTTER)
-        PAINTERS[story["scene"]](draw, cx, y, cw, HERO_SCENE_H,
-                                 story.get("scene_spec") or {})
-        draw.rectangle([cx, y, cx + cw, y + HERO_SCENE_H], outline=HAIRLINE)
-        _number_badge(draw, cx + 5, y + 5, nums[story["id"]])
-        ty = y + HERO_SCENE_H + 4
-        kicker = "%s \u00b7 %s" % (story["place"], story["kicker_date"])
-        kfnt2, _ks, kfits = tu.fit_to_width(kicker, tu.SANS_BOLD, 10, cw, 8)
-        if not kfits:
-            warnings.append("hero %s kicker does not fit" % story["id"])
-        _text(draw, (cx, ty), kicker, kfnt2, fill=ACCENT)
-        ty += 14
-        hfnt = tu.font(tu.SERIF_BOLD, 19)
-        hlines = tu.wrap(story["headline"], hfnt, cw)
-        for line in hlines[:2]:
-            _text(draw, (cx, ty), line, hfnt)
-            ty += 21
-        dfnt = tu.font(tu.SANS, 13)
-        dlines = tu.wrap(story["dek"], dfnt, cw)
-        for line in dlines[:2]:
-            _text(draw, (cx, ty), line, dfnt, fill=DEK_INK)
-            ty += 15
-    y += HERO_H
-
-    # ---- day-arc timeline, over card row 1 ------------------------------
-    # Slots are laid out on card row 1's grid (157 px cells, 167 px
-    # pitch) and name those six cards in order, so each label sits
-    # directly over its own story's image. Each slot is two lines in
-    # the 26 px strip: bold sequence label + story number, then a
-    # short phrase. The only time word on the strip is "noon"
-    # (Akvan, wire-sourced, in the hero dek above - no slot carries
-    # a clock time); the validator enforces that.
+    # ---- day-arc timeline: sequence labels only ------------------------
+    # Each slot is two lines in the 26 px strip: bold sequence label
+    # + story number, then a short phrase. The only time word on the
+    # strip is "noon" (Akvan, wire-sourced); the validator enforces
+    # that no other slot carries a clock time.
     timeline = content["timeline"]
-    row1_w = (CONTENT_W - (CARD_ROW_COUNTS[0] - 1) * GUTTER) // CARD_ROW_COUNTS[0]
-    row1_pitch = row1_w + GUTTER
+    slot_w = CONTENT_W // len(timeline)
     for i, slot in enumerate(timeline):
-        sx = MARGIN + i * row1_pitch
+        sx = MARGIN + i * slot_w
         label = slot["label"]
         phrase = slot["text"]
         num = slot["story_num"]
         lfnt = tu.font(tu.SANS_BOLD, 10)
         _text(draw, (sx, y + 1), "%s #%d" % (label, num), lfnt, fill=ACCENT)
         rfnt, _rsize, rfits = tu.fit_to_width(phrase, tu.SANS, 10,
-                                              row1_w - 6, 8)
+                                              slot_w - 6, 8)
         if not rfits:
             warnings.append("timeline slot %r phrase does not fit at 8 px"
                             % label)
@@ -187,14 +149,41 @@ def render(content, stats):
               fill=HAIRLINE, width=1)
     y += TIMELINE_H
 
-    # ---- card rows: row 1 six cards, row 2 four wider cards ------------
-    offset = 0
-    for count in CARD_ROW_COUNTS:
-        cell_w = (CONTENT_W - (count - 1) * GUTTER) // count
-        for col in range(count):
-            story = cards[offset + col]
+    # ---- hero row: 4 heroes --------------------------------------------
+    hero_cell = (CONTENT_W - 3 * GUTTER) // 4
+    for i, story in enumerate(heroes):
+        cx = MARGIN + i * (hero_cell + GUTTER)
+        cw = hero_cell if i < 3 else CONTENT_W - 3 * (hero_cell + GUTTER)
+        PAINTERS[story["scene"]](draw, cx, y, cw, HERO_SCENE_H,
+                                 story.get("scene_spec") or {})
+        draw.rectangle([cx, y, cx + cw, y + HERO_SCENE_H], outline=HAIRLINE)
+        _number_badge(draw, cx + 5, y + 5, nums[story["id"]])
+        ty = y + HERO_SCENE_H + 4
+        kicker = "%s \u00b7 %s" % (story["place"], story["kicker_date"])
+        kfnt2, _ks, kfits = tu.fit_to_width(kicker, tu.SANS_BOLD, 10, cw, 8)
+        if not kfits:
+            warnings.append("hero %s kicker does not fit" % story["id"])
+        _text(draw, (cx, ty), kicker, kfnt2, fill=ACCENT)
+        ty += 14
+        hfnt = tu.font(tu.SERIF_BOLD, 17)
+        hlines = tu.wrap(story["headline"], hfnt, cw)
+        for line in hlines[:2]:
+            _text(draw, (cx, ty), line, hfnt)
+            ty += 19
+        dfnt = tu.font(tu.SANS, 12)
+        dlines = tu.wrap(story["dek"], dfnt, cw)
+        for line in dlines[:2]:
+            _text(draw, (cx, ty), line, dfnt, fill=DEK_INK)
+            ty += 14
+    y += HERO_H
+
+    # ---- card rows: 2 rows x 6 cards ------------------------------------
+    cell_w = (CONTENT_W - (CARD_COLS - 1) * GUTTER) // CARD_COLS
+    for row in range(CARD_ROWS):
+        for col in range(CARD_COLS):
+            story = cards[row * CARD_COLS + col]
             cx = MARGIN + col * (cell_w + GUTTER)
-            cw = cell_w if col < count - 1 else CONTENT_W - col * (cell_w + GUTTER)
+            cw = cell_w if col < CARD_COLS - 1 else CONTENT_W - col * (cell_w + GUTTER)
             PAINTERS[story["scene"]](draw, cx, y, cw, CARD_SCENE_H,
                                      story.get("scene_spec") or {})
             draw.rectangle([cx, y, cx + cw, y + CARD_SCENE_H], outline=HAIRLINE)
@@ -218,14 +207,13 @@ def render(content, stats):
             if dsize < 10:
                 warnings.append("card %s dek shrunk to %d px"
                                 % (story["id"], dsize))
-        offset += count
         y += CARD_ROW_H
 
     # ---- map + index band ------------------------------------------------
     head_fnt = tu.font(tu.SANS_BOLD, 12)
     _text(draw, (MARGIN, y + 4),
           "MORE OF THE DAY \u2014 %d STORIES" % len(index), head_fnt)
-    note = "PINS = THE 12 ILLUSTRATED STORIES"
+    note = "PINS = THE 16 ILLUSTRATED STORIES"
     note_fnt = tu.font(tu.SANS, 10)
     _text(draw, (CANVAS - MARGIN - tu.width_of(note, note_fnt), y + 5),
           note, note_fnt, fill=GREY)
@@ -246,10 +234,10 @@ def render(content, stats):
     idx_x = MARGIN + MAP_W + GUTTER
     idx_w = CONTENT_W - MAP_W - GUTTER
     col_w = idx_w // 3
-    rows = 8
+    rows = 10
     row_h = body_h // rows
-    bfnt = tu.font(tu.SANS_BOLD, INDEX_FONT_SIZE)
-    nfnt = tu.font(tu.SANS_BOLD, INDEX_FONT_SIZE)
+    bfnt = tu.font(tu.SANS_BOLD, 10)
+    nfnt = tu.font(tu.SANS_BOLD, 10)
     for pos, story in enumerate(index):
         col, row = divmod(pos, rows)
         ix = idx_x + col * col_w
@@ -257,13 +245,13 @@ def render(content, stats):
         cw2 = col_w - 6 if col < 2 else idx_w - 2 * col_w - 6
         num = "%d." % nums[story["id"]]
         nw = tu.width_of(num, nfnt)
-        draw.rectangle([ix, iy, ix + nw + 5, iy + INDEX_FONT_SIZE + 1], fill=INK)
+        draw.rectangle([ix, iy, ix + nw + 5, iy + 11], fill=INK)
         _text(draw, (ix + 3, iy + 1), num, nfnt, fill=PAPER)
         blines = tu.wrap(story["brief"], bfnt, cw2 - nw - 10)
         ly = iy
         for line in blines[:2]:
             _text(draw, (ix + nw + 9, ly), line, bfnt)
-            ly += INDEX_FONT_SIZE + 2
+            ly += 11
     y += body_h
 
     # ---- DATE CHECK ------------------------------------------------------
