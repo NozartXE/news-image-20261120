@@ -1,36 +1,33 @@
-"""Entrypoint: build the front-page image and its 480 px version.
+"""Deliver the committed front-page image to the output directory.
 
-Reads the day's content file, runs the editorial validator, renders
-``entry.png`` (1024x1024) and ``entry-480.png`` (a bicubic downscale,
-the size the picture desk proofs at) next to this file.
+The page itself is rendered during development by build_image.py
+and the engine package. This shipped entrypoint only copies the
+committed PNG files into MAKEFUN_OUTPUT_DIR using the standard
+library — the simple delivery pattern the competition rules describe.
 """
-
 import os
+import shutil
 import sys
 
-from PIL import Image
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from engine import layout, validate
-
-
-def build(base_dir=None):
-    base = base_dir or os.path.dirname(os.path.abspath(__file__))
-    data = layout.load_content(layout.default_content_path(base))
-    message, ok = validate.report(data)
-    print("validator:", message)
-    if not ok:
-        raise SystemExit(1)
-    img = layout.build_image(data)
+def main():
+    base = os.path.dirname(os.path.abspath(__file__))
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or base
-    out = os.path.join(out_dir, "entry.png")
-    img.save(out, optimize=True)
-    small = img.resize((480, 480), Image.BICUBIC)
-    small.save(os.path.join(out_dir, "entry-480.png"), optimize=True)
-    print("wrote", out, os.path.getsize(out), "bytes")
-    return out
-
+    os.makedirs(out_dir, exist_ok=True)
+    for name in ("entry.png", "entry-480.png"):
+        src = os.path.join(base, name)
+        if not os.path.isfile(src):
+            if name == "entry.png":
+                print(f"missing {src}", file=sys.stderr)
+                return 1
+            continue
+        dst = os.path.join(out_dir, name)
+        same = os.path.abspath(src) == os.path.abspath(dst)
+        if not same and os.path.exists(dst):
+            same = os.path.samefile(src, dst)
+        if not same:
+            shutil.copyfile(src, dst)
+        print(f"wrote {dst} {os.path.getsize(dst)} bytes")
+    return 0
 
 if __name__ == "__main__":
-    build()
+    sys.exit(main())
