@@ -18,8 +18,9 @@ encode the C2 standard as judged for this edition:
   stories appear only as heroes/cards with a "19 NOV" kicker, and
   Section C never appears anywhere;
 - every hero/card dek carries its date; key figures are printed once
-  and on one stated basis (Akvan ~298,676 evacuated, EU-UK +0.4%,
-  NATO 72nd session, Brent $92.22);
+  and on one stated basis (Akvan ~300,000 evacuated - rounded from
+  the verified ~298,676, R6; EU-UK +0.4%, NATO 72nd session,
+  Brent $92.22);
 - figures lettered inside a scene (COP31 draft "144->80", cricket
   "146*") must also appear in that story's headline or dek, so no
   in-scene figure is orphaned;
@@ -90,7 +91,9 @@ DATE_TOKEN_RE = re.compile(r"\b(?:19|20) NOV\b|REPORTED 20 NOV", re.I)
 # and GTA VI stories; "0.4%" and "3 deals" are the EU-UK summit's
 # dek figures, "72nd" the NATO session's, "$92.22" the oil brief's.
 # R4: all nine survive the 46 -> 36 cut (every figure's story kept).
-SINGLE_FIGURES = ("298,676", "146*", "317/6", "51\u201348", "1,070",
+# R6: "298,676" is rounded to "300,000" (verified basis ~298,676
+# evacuated); the strip and the Akvan dek agree on the round figure.
+SINGLE_FIGURES = ("300,000", "146*", "317/6", "51\u201348", "1,070",
                   "0.4%", "3 deals", "72nd", "$92.22")
 # Figures that must appear NOWHERE on the page (wrong measure/basis).
 BANNED_FIGURES = ("105,304", "1,084", "$1.5tn", "$1.75tn", "$1.8tn")

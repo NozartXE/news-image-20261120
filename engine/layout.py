@@ -72,8 +72,11 @@ HAIRLINE = (40, 38, 34)
 # figure here also prints exactly once in a story headline/dek
 # (validator-enforced there); the strip repeats them, as #1's band
 # repeats its 51-48, $97.17 and 118. No new figure is introduced.
+# R6: "~300,000" is the rounded Akvan figure (verified basis
+# ~298,676 evacuated); #1/#50 print round 300,000. The strip
+# and the hero dek agree (validator single-figure rule).
 FIGURE_STRIP = [
-    ("298,676", "EVACUATED AHEAD OF AKVAN"),
+    ("300,000", "EVACUATED AHEAD OF AKVAN"),
     ("+0.4%", "UK ECONOMY, EU\u2013UK SUMMIT"),
     ("144\u219280", "COP31 DRAFT CUT"),
     ("146*", "NICHOLLS, WELLINGTON"),
@@ -190,6 +193,32 @@ def render(content, stats):
         for line in dlines[:2]:
             _text(draw, (cx, ty), line, dfnt, fill=DEK_INK)
             ty += 15
+        # R6: region chips under the dominant hero's dek. The page
+        # claims "7 REGIONS" in the kicker but (since the map was
+        # dropped in R5) showed no region evidence anywhere. The
+        # Akvan hero has spare text height (1-line headline + 1-line
+        # dek in the 655 px column); the chips name the regions
+        # actually present in the content, derived from the stats
+        # (6 geographic + Global; South America has no story and
+        # is NOT claimed). Drawn only if the row has room.
+        if i == 0 and ty + 8 + 14 <= y + HERO_H - 4:
+            counts = stats["region_counts"]
+            present = [r for r in ("Asia", "Middle East", "Europe",
+                                   "North America", "Africa", "Oceania",
+                                   "Global") if counts.get(r)]
+            chip_fnt = tu.font(tu.SANS_BOLD, 8)
+            lab_fnt = tu.font(tu.SANS_BOLD, 8)
+            chip_y = ty + 8
+            cxx = cx
+            _text(draw, (cxx, chip_y + 2), "REGIONS:", lab_fnt, fill=ACCENT)
+            cxx += tu.width_of("REGIONS:", lab_fnt) + 6
+            for region in present:
+                name = region.upper()
+                tw = tu.width_of(name, chip_fnt)
+                draw.rectangle([cxx, chip_y, cxx + tw + 10, chip_y + 13],
+                               outline=GREY)
+                _text(draw, (cxx + 5, chip_y + 2), name, chip_fnt, fill=GREY)
+                cxx += tw + 10 + 5
         cx += cw + GUTTER
     y += HERO_H
 

@@ -5,7 +5,7 @@
   "stories": [
     {
       "date_treatment": "20 Nov; noon landfall wire-sourced",
-      "dek": "Crosses coast ~noon; ~298,676 evacuated by Thu. — 20 NOV",
+      "dek": "Crosses coast ~noon; ~300,000 evacuated by Thu. — 20 NOV",
       "headline": "Akvan slams into Odisha",
       "id": "A1",
       "kicker_date": "20 NOV",
@@ -770,7 +770,7 @@
       "R5 RESTORE (panel-agreed, 36->40 as index only): A22 Fiji drought, A20 Indonesia asset-seizure law, A29 Yemen strikes, A55 South Africa Test win - the 4 least-soft of the R4 cut; all verified 20-Nov news (R1/R3 sessions), restored as index briefs, NOT illustrated. Gossip/observance stays cut: A13 Messi pay, A18 Pochettino, A19 Kompany, A21 Harry, A23 Homo erectus, A6 Children's Day."
     ],
     "figures_single_basis": [
-      "Akvan ~298,676 evacuated (Thu evening), NOT 105,304 sheltered",
+      "Akvan ~300,000 evacuated (rounded from verified ~298,676, Thu evening), NOT 105,304 sheltered",
       "EU-UK +0.4% to UK economy (Burnham, AP); 3 deals on table (Le Monde/FMT)",
       "NATO 72nd session (NATO PA)",
       "Brent $92.22 Fri morning (Reuters)",
@@ -796,8 +796,11 @@
       "A66 Kyiv fire: VERIFIED R3 - missile debris fire, Obolonskyi district, Fri 20 Nov (Reuters)",
       "A56 brief reworded R3: 'Anthropic debut' removed so DATE CHECK exclusion 'Anthropic debut' cannot collide; day-two verdict kept",
       "R4 brief shortenings (index 12 px, no meaning changed): A8 'convention' for 'centenary convention' is kept as 'FICCI centenary in Delhi'; A52 'first home-grown' dropped to 'bird-flu vaccine' (dedication event unchanged); A36 'against war and rearmament' shortened to 'against war'; A64 'founder's acquittal' to 'founder acquittal'. Each still states the verified 20-Nov fact.",
+      "R6 rounding: Akvan figure rounded ~298,676 -> ~300,000 (verified basis ~298,676 evacuated; live #1/#50 print round 300,000); strip and dek agree, validator single-figure rule re-derived to 300,000.",
+      "R6 region chips: under the Akvan hero's dek, the 7 regions actually present (Asia, Middle East, Europe, North America, Africa, Oceania, Global - derived from story counts; South America has no story and is not claimed) - the '7 REGIONS' kicker claim now has evidence on the page since the map was dropped in R5.",
+      "R6 cyclone redraw: spiral widened to ~70% of the 655 px hero frame (rx 0.36w, squash 0.26) with coastline + rain bands; headlines-covered test re-run (see r6-build-note.md).",
       "R5 boundary labels (lever 6): A56 brief now leads 'DAY 2:' so the 20-Nov day-two Anthropic verdict is visibly distinct from the 19-Nov 'Anthropic debut' in DATE CHECK; A63 brief now states 'PIF strike was 19 Nov' so the 20-Nov Brent $92.22 price is visibly distinct from the 19-Nov PIF Tower strike in DATE CHECK.",
-      "R5 figure strip (lever 2): the six strip figures (298,676 / +0.4% / 144->80 / 146* / 51-48 / $92.22) each also print once in a story dek/headline - the same repeat pattern as live #1 kho22's figure band (its 51-48, $97.17, 118 print in both band and stories); no new figure is introduced."
+      "R5 figure strip (lever 2): the six strip figures (300,000 / +0.4% / 144->80 / 146* / 51-48 / $92.22) each also print once in a story dek/headline - the same repeat pattern as live #1 kho22's figure band (its 51-48, $97.17, 118 print in both band and stories); no new figure is introduced. R6: strip figure rounded 298,676 -> 300,000 (verified basis ~298,676 evacuated); strip and Akvan dek agree."
     ]
   }
 }

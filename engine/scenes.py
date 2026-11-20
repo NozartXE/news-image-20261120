@@ -251,23 +251,69 @@ def paint_clinic_ward(draw, x, y, w, h, spec):
 
 
 def paint_cyclone(draw, x, y, w, h, spec):
+    # R6: the spiral now FILLS its frame. R5's spiral (max radius
+    # 0.52h) covered ~35% of the 655 px hero and left ~55% empty
+    # blue. The new spiral is a wide flat cyclone seen at an
+    # angle: concentric elliptical arms with horizontal radius
+    # 0.36w (~70% of the frame width), vertical squash 0.26 so
+    # the arms stay inside the 134 px scene height, rotating
+    # start angles so the arms spiral inward to a dark eye.
+    # A coastline + rain bands ground it: the storm is making
+    # landfall, not floating on blank sea.
     draw.rectangle([x, y, x + w, y + h], fill=(44, 92, 128))
-    cx, cy = x + int(w * 0.38), y + int(h * 0.52)
-    # Spiral storm bands: arcs of shrinking radius, alternating tones.
-    for i, r in enumerate(range(int(h * 0.52), 8, -9)):
+    # (No cloud arcs in the top corners: an earlier version drew
+    # them with centres above the scene box and the arcs spilled
+    # over the figure strip above the hero. Everything in this
+    # painter now stays strictly inside (x, y, w, h).)
+    cx, cy = x + int(w * 0.46), y + int(h * 0.52)
+    # Spiral arms: rx from 0.36w down, ry = 0.26 * rx clamped to
+    # 60 so no arc leaves the scene box vertically; each arm is
+    # a 210-degree arc whose start rotates 65 degrees per arm,
+    # so the breaks march around the eye and the arms read as a
+    # spiral, not closed rings.
+    rx_max = int(w * 0.36)
+    i = 0
+    r = rx_max
+    while r >= 14:
+        ry = max(4, min(int(r * 0.26), 60))
         tone = (226, 232, 236) if i % 2 == 0 else (170, 196, 214)
-        draw.arc([cx - r, cy - int(r * 0.72), cx + r, cy + int(r * 0.72)],
-                 i * 55, i * 55 + 250, fill=tone, width=5)
-    draw.ellipse([cx - 6, cy - 5, cx + 6, cy + 5], fill=(30, 60, 92))
-    # Irregular island with a palm, lower right.
-    ix, iy = x + int(w * 0.70), y + int(h * 0.74)
-    draw.polygon([(ix, iy), (ix + 16, iy - 7), (ix + 34, iy - 3), (ix + 46, iy + 3),
-                  (ix + 30, iy + 7), (ix + 10, iy + 6)], fill=(74, 130, 74))
-    draw.line([ix + 24, iy - 4, ix + 27, iy - 18], fill=(90, 64, 40), width=3)
-    for ang in (200, 250, 300, 340):
-        ex = ix + 27 + int(11 * math.cos(math.radians(ang)))
-        ey = iy - 18 + int(7 * math.sin(math.radians(ang)))
-        draw.line([ix + 27, iy - 18, ex, ey], fill=(52, 116, 56), width=2)
+        draw.arc([cx - r, cy - ry, cx + r, cy + ry],
+                 i * 65, i * 65 + 210, fill=tone, width=6)
+        r -= 20
+        i += 1
+    # Dark eye with a pale ring at the spiral centre.
+    draw.ellipse([cx - 9, cy - 7, cx + 9, cy + 7], fill=(30, 60, 92))
+    draw.ellipse([cx - 9, cy - 7, cx + 9, cy + 7], outline=(226, 232, 236), width=2)
+    # Rain bands: three short pale streaks in the upper right,
+    # slanting down toward the eye.
+    for k in range(3):
+        bx0 = x + int(w * (0.72 + 0.07 * k))
+        draw.line([bx0, y + 6, bx0 + 20, y + int(h * 0.30)],
+                  fill=(190, 210, 226), width=2)
+    # Coastline: land along the bottom, wavy top edge, with a
+    # pale surf line and wave arcs just offshore. The storm's
+    # lowest arms run into the coast instead of ending in blue.
+    coast = [(x, y + h), (x, y + int(h * 0.88))]
+    for k in range(9):
+        fx = x + int(w * k / 8)
+        fy = y + int(h * (0.85 + 0.04 * math.sin(k * 1.7)))
+        coast.append((fx, fy))
+    coast.append((x + w, y + int(h * 0.88)))
+    coast.append((x + w, y + h))
+    draw.polygon(coast, fill=(62, 104, 70))
+    draw.line([(fx, fy) for fx, fy in coast[1:-1]], fill=(226, 232, 236), width=2)
+    for k in range(3):
+        wx = x + int(w * (0.18 + 0.22 * k))
+        wy = y + int(h * 0.80)
+        draw.arc([wx - 14, wy - 4, wx + 14, wy + 6], 180, 360,
+                 fill=(200, 225, 235), width=2)
+    # One palm on the coast, lower right, bending in the wind.
+    ix, iy = x + int(w * 0.86), y + int(h * 0.93)
+    draw.line([ix, iy, ix + 4, iy - 26], fill=(90, 64, 40), width=3)
+    for ang in (195, 240, 285, 330):
+        ex = ix + 4 + int(13 * math.cos(math.radians(ang)))
+        ey = iy - 26 + int(8 * math.sin(math.radians(ang)))
+        draw.line([ix + 4, iy - 26, ex, ey], fill=(52, 116, 56), width=2)
     label_chip(draw, x, y, w, h, spec.get("label", ""), align="tr")
 
 
